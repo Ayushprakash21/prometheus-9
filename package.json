@@ -1,0 +1,21 @@
+{
+  "name": "prometheus-9-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PROMETHEUS-9 — Autonomous Marketing, Creative Production & Growth Operating System",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "deploy:pages": "cd frontend && npx wrangler pages deploy dist --project-name=prometheus-9",
+    "test:backend": "pytest backend/tests -v",
+    "start:backend": "python -m uvicorn app.main:app --app-dir backend --reload --port 8000"
+  },
+  "keywords": [
+    "autonomous-marketing",
+    "ai-agents",
+    "creative-production",
+    "growth-operating-system"
+  ],
+  "author": "Ayush Prakash",
+  "license": "UNLICENSED"
+}
