@@ -1,13 +1,15 @@
 import os
 import shutil
 from pathlib import Path
+from typing import List, Union
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "PROMETHEUS-9"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = Field(default="production", description="production, staging, or development")
     
     # Security
     SECRET_KEY: str = Field(
@@ -17,6 +19,31 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     ALGORITHM: str = "HS256"
     
+    # CORS Security Configuration
+    ALLOWED_ORIGINS: Union[List[str], str] = Field(
+        default=[
+            "https://prometheus-9.pages.dev",
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:3000"
+        ],
+        description="Allowed CORS origins"
+    )
+    
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return v
+        return [
+            "https://prometheus-9.pages.dev",
+            "http://localhost:5173",
+            "http://localhost:3000"
+        ]
+
     # Storage & Persistence
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
     STORAGE_DIR: Path = BASE_DIR / "storage"

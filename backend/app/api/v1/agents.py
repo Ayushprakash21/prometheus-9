@@ -1,10 +1,14 @@
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional, Tuple, Dict, Any
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from app.database import get_db
 from app.models.agent import AgentRun, QualityReport, ComplianceReport
+from app.models.organization import Product
+from app.models.system import User, Organization, OrganizationMembership
 from app.core.scheduler import task_queue
+from app.security.dependencies import get_current_user, get_current_active_org, require_roles
+from app.services.audit import record_audit_event
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -30,6 +34,7 @@ SPECIALIST_AGENT_ROSTER = [
 
 class AgentRunOut(BaseModel):
     id: str
+    organization_id: str
     agent_role: str
     product_id: str
     status: str
@@ -39,29 +44,80 @@ class AgentRunOut(BaseModel):
         from_attributes = True
 
 @router.get("/roster")
-async def get_agent_roster():
+async def get_agent_roster(
+    org_and_membership: Tuple[Organization, OrganizationMembership] = Depends(get_current_active_org)
+):
     return {
         "is_autonomous_paused": task_queue.is_paused,
+        "scheduler_status": task_queue.get_status(),
         "agents": SPECIALIST_AGENT_ROSTER
     }
 
 @router.get("/runs", response_model=List[AgentRunOut])
 async def list_agent_runs(
     product_id: Optional[str] = None,
+    org_and_membership: Tuple[Organization, OrganizationMembership] = Depends(get_current_active_org),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(AgentRun)
+    org, _ = org_and_membership
+    query = select(AgentRun).where(AgentRun.organization_id == org.id)
     if product_id:
         query = query.where(AgentRun.product_id == product_id)
     result = await db.execute(query.order_by(AgentRun.started_at.desc()).limit(50))
     return result.scalars().all()
 
 @router.post("/emergency-pause")
-async def emergency_pause():
+async def emergency_pause(
+    request: Request,
+    org_and_membership: Tuple[Organization, OrganizationMembership] = Depends(require_roles(["owner", "admin"])),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    org, membership = org_and_membership
     task_queue.pause_all()
-    return {"message": "Autonomous marketing engine paused immediately.", "is_paused": True}
+    
+    await record_audit_event(
+        db=db,
+        actor_id=current_user.id,
+        actor_type="user",
+        action="AUTONOMOUS_OPERATIONS_PAUSED",
+        resource_type="system",
+        organization_id=org.id,
+        details={"reason": "Emergency pause triggered by authorized operator"},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Autonomous marketing engine paused immediately.",
+        "is_paused": True,
+        "operator": current_user.email,
+        "role": membership.role
+    }
 
 @router.post("/resume")
-async def resume_autonomous():
+async def resume_autonomous(
+    request: Request,
+    org_and_membership: Tuple[Organization, OrganizationMembership] = Depends(require_roles(["owner", "admin"])),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    org, membership = org_and_membership
     task_queue.resume_all()
-    return {"message": "Autonomous marketing engine resumed.", "is_paused": False}
+
+    await record_audit_event(
+        db=db,
+        actor_id=current_user.id,
+        actor_type="user",
+        action="AUTONOMOUS_OPERATIONS_RESUMED",
+        resource_type="system",
+        organization_id=org.id,
+        details={"reason": "Autonomous operations resumed by authorized operator"},
+        ip_address=request.client.host if request.client else None
+    )
+
+    return {
+        "message": "Autonomous marketing engine resumed.",
+        "is_paused": False,
+        "operator": current_user.email,
+        "role": membership.role
+    }
