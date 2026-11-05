@@ -2,14 +2,14 @@ import pytest
 from httpx import AsyncClient
 
 @pytest.mark.asyncio
-async def test_strict_product_knowledge_isolation(client: AsyncClient):
+async def test_strict_product_knowledge_isolation(client: AsyncClient, auth_headers: dict):
     # Fetch Orion-9
-    orion_res = await client.get("/api/v1/products/orion-9")
+    orion_res = await client.get("/api/v1/products/orion-9", headers=auth_headers)
     assert orion_res.status_code == 200
     orion_data = orion_res.json()
     
     # Fetch ApplyWise AI
-    applywise_res = await client.get("/api/v1/products/applywise-ai")
+    applywise_res = await client.get("/api/v1/products/applywise-ai", headers=auth_headers)
     assert applywise_res.status_code == 200
     applywise_data = applywise_res.json()
     

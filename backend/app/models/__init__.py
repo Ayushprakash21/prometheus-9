@@ -1,30 +1,57 @@
-from app.database import Base
-from app.models.system import User, AuditLog, SystemSetting
+from app.database.base import Base
+from app.models.system import (
+    User,
+    Organization,
+    OrganizationMembership,
+    AuditLog,
+    SystemSetting
+)
 from app.models.organization import (
-    Organization, Product, ProductSource, ProductFeature,
-    BrandProfile, AudiencePersona, Competitor
+    Product,
+    ProductSource,
+    ProductFeature,
+    BrandProfile,
+    AudiencePersona,
+    Competitor
 )
 from app.models.campaign import (
-    Campaign, ContentIdea, Script, Storyboard,
-    MediaAsset, Voiceover, RenderedVideo, Thumbnail, Subtitle
+    Campaign,
+    ContentIdea,
+    Script,
+    Storyboard,
+    MediaAsset,
+    Voiceover,
+    RenderedVideo,
+    Thumbnail,
+    Subtitle
 )
 from app.models.publishing import (
-    SocialAccount, OAuthCredential, PublishingJob,
-    PublicationRecord, PublishingError
+    SocialAccount,
+    OAuthCredential,
+    PublishingJob,
+    PublicationRecord,
+    PublishingError
 )
 from app.models.analytics import (
-    PlatformAnalytics, WebsiteAnalytics, ConversionEvent
+    PlatformAnalytics,
+    WebsiteAnalytics,
+    ConversionEvent
 )
 from app.models.agent import (
-    AgentRun, AgentTask, AgentMemory, QualityReport, ComplianceReport
+    AgentRun,
+    AgentTask,
+    AgentMemory,
+    QualityReport,
+    ComplianceReport
 )
 
 __all__ = [
     "Base",
     "User",
+    "Organization",
+    "OrganizationMembership",
     "AuditLog",
     "SystemSetting",
-    "Organization",
     "Product",
     "ProductSource",
     "ProductFeature",
