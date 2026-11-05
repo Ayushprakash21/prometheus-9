@@ -1,46 +1,118 @@
 import React, { useState, useEffect } from "react";
-import { Header } from "./components/Header";
-import { Sidebar, NavSection } from "./components/Sidebar";
-import { ExecutiveOverview } from "./components/ExecutiveOverview";
-import { ProductPortfolio } from "./components/ProductPortfolio";
-import { AgentWorkforce } from "./components/AgentWorkforce";
-import { SocialPublishingCenter } from "./components/SocialPublishingCenter";
-import { SystemMonitoring } from "./components/SystemMonitoring";
-import { PlaceholderSection } from "./components/PlaceholderSection";
-import {
-  Compass, Target, FileText, Video, Image, Calendar,
-  BarChart3, TrendingUp, Layers, Sliders, ShieldCheck, Settings
-} from "lucide-react";
-import {
-  Product, SystemHealth, SpecialistAgent,
-  SocialAccount, PublicationRecord
+import { 
+  Product, 
+  BrandProfile,
+  ProductFeature,
+  AudiencePersona,
+  ProductSource,
+  Campaign,
+  ContentIdea,
+  Script,
+  MediaAsset,
+  SpecialistAgent, 
+  SocialAccount, 
+  PublicationRecord,
+  SystemHealth,
+  AgentRun 
 } from "./types";
-import {
-  fetchProducts, fetchHealth, fetchAgentRoster,
-  fetchSocialAccounts, fetchPublications,
-  pauseAutonomousEngine, resumeAutonomousEngine
+import { 
+  fetchProducts, 
+  fetchHealth, 
+  fetchAgentRoster, 
+  fetchAgentRuns,
+  fetchSocialAccounts, 
+  fetchPublications,
+  fetchFeatures,
+  fetchBrandProfile,
+  fetchAudiences,
+  fetchSources,
+  fetchCampaigns,
+  fetchIdeas,
+  fetchScripts,
+  fetchAssets,
+  pauseAutonomousEngine,
+  resumeAutonomousEngine
 } from "./services/api";
 
+import { BrandUniverseCanvas } from "./components/BrandUniverseCanvas";
+import { BrandWorld } from "./components/BrandWorld";
+import { BrandCreationLab } from "./components/BrandCreationLab";
+import { AgentWorkforceView } from "./components/AgentWorkforceView";
+import { CreativeStudioView } from "./components/CreativeStudioView";
+import { SocialConstellationView } from "./components/SocialConstellationView";
+import { AutonomyControlView } from "./components/AutonomyControlView";
+
+import { 
+  Sparkles, 
+  Compass, 
+  Layers, 
+  Bot, 
+  Film, 
+  Share2, 
+  Sliders, 
+  AlertCircle,
+  Play,
+  Pause,
+  Clock,
+  ShieldCheck
+} from "lucide-react";
+
+export type ActiveView = 
+  | 'universe' 
+  | 'brand_world' 
+  | 'creation_lab' 
+  | 'workforce' 
+  | 'creative_studio' 
+  | 'social' 
+  | 'autonomy';
+
 export const App: React.FC = () => {
-  const [currentSection, setCurrentSection] = useState<NavSection>("overview");
+  const [activeView, setActiveView] = useState<ActiveView>('universe');
+  const [brandWorldInitialTab, setBrandWorldInitialTab] = useState<string>('identity');
+
+  // Application Data States
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [features, setFeatures] = useState<ProductFeature[]>([]);
+  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
+  const [audiences, setAudiences] = useState<AudiencePersona[]>([]);
+  const [sources, setSources] = useState<ProductSource[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [agents, setAgents] = useState<SpecialistAgent[]>([]);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [publications, setPublications] = useState<PublicationRecord[]>([]);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+
+  // Status & Telemetry States
   const [loading, setLoading] = useState<boolean>(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState<boolean>(false);
+  const [utcTime, setUtcTime] = useState<string>("");
 
-  const loadData = async () => {
+  // Clock Ticker in UTC
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setUtcTime(`${now.toUTCString().slice(17, 25)} UTC`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Primary Data Fetcher
+  const loadInitialData = async () => {
     try {
       let authReq = false;
       let connErr: string | null = null;
 
       const healthData = await fetchHealth().catch(() => {
-        connErr = "PROMETHEUS-9 Core Engine backend is currently offline or unreachable.";
+        connErr = "PROMETHEUS-9 Core Engine backend unreachable.";
         return null;
       });
 
@@ -65,22 +137,113 @@ export const App: React.FC = () => {
       setIsPaused(agentData.is_autonomous_paused);
       setSocialAccounts(accountsData);
       setPublications(pubsData);
+
+      // Select first product if none selected
+      if (!selectedProduct && prodsData.length > 0) {
+        setSelectedProduct(prodsData[0]);
+      }
     } catch (e) {
-      console.error("Data loading failure", e);
+      console.error("Initial load failed", e);
     } finally {
       setLoading(false);
     }
   };
 
+  // Load Brand-Specific Sub-Resources when selectedProduct changes
+  const loadProductResources = async (prodId: string) => {
+    try {
+      const [
+        featData,
+        bpData,
+        audData,
+        srcData,
+        campData,
+        ideaData,
+        scriptData,
+        assetData,
+        runsData
+      ] = await Promise.all([
+        fetchFeatures(prodId).catch(() => []),
+        fetchBrandProfile(prodId).catch(() => null),
+        fetchAudiences(prodId).catch(() => []),
+        fetchSources(prodId).catch(() => []),
+        fetchCampaigns(prodId).catch(() => []),
+        fetchIdeas(prodId).catch(() => []),
+        fetchScripts(prodId).catch(() => []),
+        fetchAssets(prodId).catch(() => []),
+        fetchAgentRuns(prodId).catch(() => [])
+      ]);
+
+      setFeatures(featData);
+      setBrandProfile(bpData);
+      setAudiences(audData);
+      setSources(srcData);
+      setCampaigns(campData);
+      setIdeas(ideaData);
+      setScripts(scriptData);
+      setAssets(assetData);
+      setAgentRuns(runsData);
+    } catch (e) {
+      console.error("Failed to load product sub-resources", e);
+    }
+  };
+
   useEffect(() => {
-    loadData();
-    const interval = setInterval(() => {
-      fetchHealth().then(setHealth).catch(() => {});
-    }, 15000);
-    return () => clearInterval(interval);
+    loadInitialData();
   }, []);
 
-  const handleTogglePause = async () => {
+  useEffect(() => {
+    if (selectedProduct) {
+      loadProductResources(selectedProduct.id);
+    }
+  }, [selectedProduct?.id]);
+
+  // Handle Universe Node Click (Route into contextual deep workspace)
+  const handleSelectUniverseNode = (nodeId: string) => {
+    switch (nodeId) {
+      case 'identity':
+        setBrandWorldInitialTab('identity');
+        setActiveView('brand_world');
+        break;
+      case 'products':
+        setBrandWorldInitialTab('features');
+        setActiveView('brand_world');
+        break;
+      case 'audience':
+        setBrandWorldInitialTab('audience');
+        setActiveView('brand_world');
+        break;
+      case 'market_intel':
+        setBrandWorldInitialTab('intelligence');
+        setActiveView('brand_world');
+        break;
+      case 'strategy':
+      case 'performance':
+        setActiveView('autonomy');
+        break;
+      case 'campaigns':
+      case 'creative':
+        setActiveView('creative_studio');
+        break;
+      case 'workforce':
+        setActiveView('workforce');
+        break;
+      case 'social':
+        setActiveView('social');
+        break;
+      default:
+        setActiveView('brand_world');
+        break;
+    }
+  };
+
+  const handleBrandCreationSuccess = async (newProd: Product) => {
+    await loadInitialData();
+    setSelectedProduct(newProd);
+    setActiveView('brand_world');
+  };
+
+  const handleToggleEmergencyPause = async () => {
     try {
       if (isPaused) {
         const res = await resumeAutonomousEngine();
@@ -90,266 +253,227 @@ export const App: React.FC = () => {
         setIsPaused(res.is_paused);
       }
     } catch (e) {
-      console.error("Pause/Resume toggle failed", e);
+      console.error("Emergency toggle failed", e);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-['Inter']">
-      <Header
-        products={products}
-        selectedProduct={selectedProduct}
-        onSelectProduct={setSelectedProduct}
-        health={health}
-        isPaused={isPaused}
-        onTogglePause={handleTogglePause}
-      />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          currentSection={currentSection}
-          onSelectSection={setCurrentSection}
-        />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#202221]">
-          {connectionError && (
-            <div className="mb-6 p-4 rounded-lg bg-[#A16C50]/20 border border-[#A16C50]/60 flex items-center justify-between text-xs text-[#EEE8DE]">
-              <div className="flex items-center gap-3">
-                <span className="font-bold uppercase tracking-wider text-[#A16C50] font-mono-metrics">Backend Offline</span>
-                <span>{connectionError}</span>
+    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-interface selection:bg-[#A16C50]/30 selection:text-[#EEE8DE]">
+      {/* FLOATING EDITORIAL TOP HEADER */}
+      <header className="sticky top-0 z-40 w-full px-6 md:px-12 py-3 bg-[#202221]/80 backdrop-blur-xl border-b border-copper-subtle/50 flex items-center justify-between">
+        {/* Brand Monogram & Category */}
+        <div className="flex items-center gap-6">
+          <div 
+            onClick={() => setActiveView('universe')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[#292d2b] border border-[#A16C50] flex items-center justify-center copper-glow-sm group-hover:scale-105 transition-all">
+              <span className="font-editorial text-sm font-bold text-[#EEE8DE]">P</span>
+            </div>
+            <div>
+              <div className="font-editorial text-lg tracking-wider text-[#EEE8DE] group-hover:text-[#C9B49B] transition-colors leading-none">
+                PROMETHEUS-9
               </div>
-              <span className="text-[11px] font-mono-metrics text-[#C9B49B]">Status: DEGRADED / LOCAL VIEW</span>
-            </div>
-          )}
-
-          {authRequired && (
-            <div className="mb-6 p-4 rounded-lg bg-[#414542]/40 border border-[#C9B49B]/40 flex items-center justify-between text-xs text-[#EEE8DE]">
-              <div className="flex items-center gap-3">
-                <span className="font-bold uppercase tracking-wider text-[#C9B49B] font-mono-metrics">Authentication Required</span>
-                <span>REST API endpoints are secured with Argon2id + JWT Bearer authentication.</span>
+              <div className="font-mono-metrics text-[9px] text-[#A16C50] uppercase tracking-widest mt-0.5">
+                AUTONOMOUS GROWTH OS
               </div>
-              <span className="text-[11px] font-mono-metrics text-[#A16C50]">RBAC Active</span>
+            </div>
+          </div>
+
+          {/* Active Brand World Pill */}
+          {selectedProduct && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#292d2b] border border-copper-subtle text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#A16C50]" />
+              <span className="text-[#C9B49B]">Active World:</span>
+              <strong className="text-[#EEE8DE]">{selectedProduct.name}</strong>
             </div>
           )}
+        </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center h-64 text-[#C9B49B] font-mono-metrics text-xs">
-              Initializing PROMETHEUS-9 Operating System...
-            </div>
-          ) : (
-            <>
-              {currentSection === "overview" && (
-                <ExecutiveOverview
-                  products={products}
-                  selectedProduct={selectedProduct}
-                  health={health}
-                  agents={agents}
-                  socialAccounts={socialAccounts}
-                  publications={publications}
-                  onNavigate={setCurrentSection}
-                />
-              )}
+        {/* System Telemetry & UTC Time */}
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono-metrics text-[#C9B49B]">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#A16C50]" />
+              <span>{utcTime || '16:04:00 UTC'}</span>
+            </span>
+            <span>•</span>
+            <span>MMXXVI</span>
+            <span>•</span>
+            <span className="text-[#A16C50]">OP_STATE: NOMINAL</span>
+          </div>
 
-              {currentSection === "portfolio" && (
-                <ProductPortfolio
-                  products={products}
-                  selectedProduct={selectedProduct}
-                  onSelectProduct={setSelectedProduct}
-                  onRefresh={loadData}
-                />
-              )}
+          {/* Emergency Killswitch Pill */}
+          <button
+            onClick={handleToggleEmergencyPause}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-interface transition-all cursor-pointer ${
+              isPaused 
+                ? 'bg-rose-950/60 border border-rose-500/60 text-rose-300' 
+                : 'bg-[#292d2b] border border-copper-subtle text-[#C9B49B] hover:text-[#EEE8DE]'
+            }`}
+          >
+            {isPaused ? <Play className="w-3 h-3 text-rose-400" /> : <Pause className="w-3 h-3 text-[#A16C50]" />}
+            <span className="font-mono-metrics text-[10px] uppercase font-semibold">
+              {isPaused ? 'HALTED' : 'ACTIVE'}
+            </span>
+          </button>
 
-              {currentSection === "agent_workforce" && (
-                <AgentWorkforce
-                  agents={agents}
-                  isPaused={isPaused}
-                  onTogglePause={handleTogglePause}
-                />
-              )}
+          {/* Quick Launch Genesis Button */}
+          <button
+            onClick={() => setActiveView('creation_lab')}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#A16C50] hover:bg-[#B87C5E] text-[#EEE8DE] text-xs font-interface font-semibold shadow-md shadow-[#A16C50]/20 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Genesis Lab</span>
+          </button>
+        </div>
+      </header>
 
-              {currentSection === "social_publishing" && (
-                <SocialPublishingCenter
-                  socialAccounts={socialAccounts}
-                  publications={publications}
-                  selectedProduct={selectedProduct}
-                />
-              )}
+      {/* SYSTEM DIAGNOSTIC WARNINGS (If offline or auth needed) */}
+      {connectionError && (
+        <div className="px-6 md:px-12 py-3 bg-[#A16C50]/20 border-b border-[#A16C50]/60 flex items-center justify-between text-xs text-[#EEE8DE]">
+          <div className="flex items-center gap-3">
+            <span className="font-bold uppercase tracking-wider text-[#A16C50] font-mono-metrics">Backend Offline</span>
+            <span>{connectionError}</span>
+          </div>
+          <span className="font-mono-metrics text-[10px] text-[#C9B49B]">STANDALONE EXPERIENCE</span>
+        </div>
+      )}
 
-              {currentSection === "system_monitoring" && (
-                <SystemMonitoring
-                  health={health}
-                  onRefresh={() => fetchHealth().then(setHealth)}
-                />
-              )}
+      {authRequired && (
+        <div className="px-6 md:px-12 py-3 bg-amber-950/40 border-b border-amber-600/50 flex items-center justify-between text-xs text-amber-200">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Authenticated session active in development mode. All data persisters are active.</span>
+          </div>
+          <span className="font-mono-metrics text-[10px] text-amber-400 uppercase">LOCAL AUTH PASSTHROUGH</span>
+        </div>
+      )}
 
-              {/* Placeholder views for phased rollout */}
-              {currentSection === "intelligence" && (
-                <PlaceholderSection
-                  title="Marketing Intelligence"
-                  phase="PHASE 2"
-                  icon={Compass}
-                  description="Autonomous product website scanning, verifiable fact extraction, competitor differentiation, and audience intelligence."
-                  plannedDeliverables={[
-                    "Website HTML & sitemap crawler with SSRF protection",
-                    "Deterministic fact-extraction parser mapping to ProductFeature",
-                    "Competitor positioning matrix and claim isolation engine",
-                    "Audience persona generation and channel affinity mapping"
-                  ]}
-                />
-              )}
+      {/* MAIN VIEWPORT */}
+      <main className="flex-1 w-full">
+        {activeView === 'universe' && (
+          <BrandUniverseCanvas
+            product={selectedProduct}
+            features={features}
+            brandProfile={brandProfile}
+            audiences={audiences}
+            campaigns={campaigns}
+            agents={agents}
+            socialAccounts={socialAccounts}
+            isAutonomousPaused={isPaused}
+            onSelectNode={handleSelectUniverseNode}
+            onOpenBrandCreation={() => setActiveView('creation_lab')}
+            onSwitchBrand={(pId) => {
+              const found = products.find(p => p.id === pId);
+              if (found) setSelectedProduct(found);
+            }}
+            allProducts={products}
+          />
+        )}
 
-              {currentSection === "campaigns" && (
-                <PlaceholderSection
-                  title="Campaign Command Center"
-                  phase="PHASE 2"
-                  icon={Target}
-                  description="Strategic campaign architecture, objective definition, and content ideation engine."
-                  plannedDeliverables={[
-                    "Objective-aligned campaign planning (Awareness, Leads, Demos, Registrations)",
-                    "Content idea generation with hook, thesis, and format specification",
-                    "Cross-product budget capping and timeline orchestration"
-                  ]}
-                />
-              )}
+        {activeView === 'brand_world' && selectedProduct && (
+          <BrandWorld
+            product={selectedProduct}
+            features={features}
+            brandProfile={brandProfile}
+            audiences={audiences}
+            sources={sources}
+            campaigns={campaigns}
+            ideas={ideas}
+            scripts={scripts}
+            assets={assets}
+            onRefresh={async () => {
+              if (selectedProduct) await loadProductResources(selectedProduct.id);
+            }}
+            onClose={() => setActiveView('universe')}
+            initialTab={brandWorldInitialTab}
+          />
+        )}
 
-              {currentSection === "content_studio" && (
-                <PlaceholderSection
-                  title="Content Studio"
-                  phase="PHASE 3"
-                  icon={FileText}
-                  description="Scriptwriting engine, hook-body-CTA structured generation, and narrative verification."
-                  plannedDeliverables={[
-                    "Multi-format script generation (Shorts, Reels, Tutorials, Carousels)",
-                    "Hook strength scoring and target duration timing constraints",
-                    "Versioned script editor with visual prompt annotations"
-                  ]}
-                />
-              )}
+        {activeView === 'creation_lab' && (
+          <BrandCreationLab
+            onSuccess={handleBrandCreationSuccess}
+            onCancel={() => setActiveView('universe')}
+          />
+        )}
 
-              {currentSection === "video_studio" && (
-                <PlaceholderSection
-                  title="Video Production Studio"
-                  phase="PHASE 3"
-                  icon={Video}
-                  description="FFmpeg 9.0.2 programmatic rendering engine, motion graphic templates, and Kokoro/Piper audio synchronization."
-                  plannedDeliverables={[
-                    "FFmpeg template-driven video compilation (9:16 Shorts & 16:9 Landscape)",
-                    "Low-VRAM video pipeline engineered for GTX 1650 (4 GB VRAM)",
-                    "Synchronized subtitle burn-in and audio normalization"
-                  ]}
-                />
-              )}
+        {activeView === 'workforce' && (
+          <AgentWorkforceView
+            agents={agents}
+            runs={agentRuns}
+            isAutonomousPaused={isPaused}
+            selectedProduct={selectedProduct}
+            onRefresh={loadInitialData}
+            onClose={() => setActiveView('universe')}
+          />
+        )}
 
-              {currentSection === "assets" && (
-                <PlaceholderSection
-                  title="Creative Asset Library"
-                  phase="PHASE 3"
-                  icon={Image}
-                  description="Content-addressed storage engine with SHA-256 deduplication and licensing attribution tracking."
-                  plannedDeliverables={[
-                    "Local asset storage with cryptographic SHA-256 integrity verification",
-                    "Licensing status tracking (Proprietary, CC0, Licensed)",
-                    "Dynamic thumbnail generation with Burnished Copper brand accents"
-                  ]}
-                />
-              )}
+        {activeView === 'creative_studio' && (
+          <CreativeStudioView
+            product={selectedProduct}
+            campaigns={campaigns}
+            ideas={ideas}
+            scripts={scripts}
+            assets={assets}
+            onRefresh={async () => {
+              if (selectedProduct) await loadProductResources(selectedProduct.id);
+            }}
+            onClose={() => setActiveView('universe')}
+          />
+        )}
 
-              {currentSection === "calendar" && (
-                <PlaceholderSection
-                  title="Publishing Calendar"
-                  phase="PHASE 5"
-                  icon={Calendar}
-                  description="Multi-platform scheduled publishing timeline with rate-limit and time-window awareness."
-                  plannedDeliverables={[
-                    "Visual chronological calendar for YouTube, LinkedIn, Meta, TikTok, and X",
-                    "Persistent queue scheduling with automatic retry and dead-letter detection"
-                  ]}
-                />
-              )}
+        {activeView === 'social' && (
+          <SocialConstellationView
+            product={selectedProduct}
+            accounts={socialAccounts}
+            publications={publications}
+            onRefresh={loadInitialData}
+            onClose={() => setActiveView('universe')}
+          />
+        )}
 
-              {currentSection === "analytics" && (
-                <PlaceholderSection
-                  title="Analytics & Performance"
-                  phase="PHASE 6"
-                  icon={BarChart3}
-                  description="True performance telemetry retrieved directly from authorized platform APIs and website UTM parameters."
-                  plannedDeliverables={[
-                    "Platform API metrics sync (YouTube Analytics, Meta Insights, LinkedIn Analytics)",
-                    "Zero-Fabrication chart engine displaying only authentic observed metrics"
-                  ]}
-                />
-              )}
+        {activeView === 'autonomy' && (
+          <AutonomyControlView
+            isAutonomousPaused={isPaused}
+            onRefresh={loadInitialData}
+            onClose={() => setActiveView('universe')}
+          />
+        )}
+      </main>
 
-              {currentSection === "growth" && (
-                <PlaceholderSection
-                  title="Growth Optimization"
-                  phase="PHASE 7"
-                  icon={TrendingUp}
-                  description="Autonomous campaign optimization, creative variant experiments, and audience conversion learning."
-                  plannedDeliverables={[
-                    "Attribution modeling linking content publications to product registrations",
-                    "Autonomous creative iteration recommendations"
-                  ]}
-                />
-              )}
-
-              {currentSection === "integrations" && (
-                <PlaceholderSection
-                  title="Integrations & Accounts"
-                  phase="PHASE 5"
-                  icon={Layers}
-                  description="OAuth 2.0 social channel management, encrypted token storage, and permission validation."
-                  plannedDeliverables={[
-                    "Official YouTube Data API v3 integration with Fernet-encrypted refresh tokens",
-                    "Meta, LinkedIn, TikTok, and X official API connectors"
-                  ]}
-                />
-              )}
-
-              {currentSection === "automation_rules" && (
-                <PlaceholderSection
-                  title="Automation Rules"
-                  phase="PHASE 7"
-                  icon={Sliders}
-                  description="Governed autonomous execution triggers, frequency limits, and threshold constraints."
-                  plannedDeliverables={[
-                    "Configurable autonomous publishing schedules and maximum frequency caps",
-                    "Strict safety triggers halting operations upon token expiry or claim mismatch"
-                  ]}
-                />
-              )}
-
-              {currentSection === "brand_compliance" && (
-                <PlaceholderSection
-                  title="Brand & Compliance"
-                  phase="PHASE 4"
-                  icon={ShieldCheck}
-                  description="Pre-publishing verification engine ensuring zero-hallucination standards, copyright safety, and Charcoal & Copper adherence."
-                  plannedDeliverables={[
-                    "Factual claim verifier rejecting scripts containing unverified capabilities",
-                    "Prohibited claims and blacklist scanner per product",
-                    "Brand palette and contrast validator"
-                  ]}
-                />
-              )}
-
-              {currentSection === "settings" && (
-                <PlaceholderSection
-                  title="Settings & Administration"
-                  phase="PHASE 1"
-                  icon={Settings}
-                  description="System configuration, database backups, audit trail inspection, and environment controls."
-                  plannedDeliverables={[
-                    "Master encryption key rotation and storage configuration",
-                    "Audit log inspection across all user and agent actions"
-                  ]}
-                />
-              )}
-            </>
-          )}
-        </main>
-      </div>
+      {/* FLOATING LUXURY BOTTOM NAVIGATION DOCK */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-3 py-2 rounded-full bg-[#202221]/90 backdrop-blur-2xl border border-copper-subtle shadow-2xl flex items-center gap-1 sm:gap-2">
+        {[
+          { id: 'universe' as ActiveView, label: '00 Universe', icon: Compass },
+          { id: 'brand_world' as ActiveView, label: '01 Brand Worlds', icon: Layers },
+          { id: 'creation_lab' as ActiveView, label: '02 Genesis Lab', icon: Sparkles },
+          { id: 'workforce' as ActiveView, label: '03 Workforce', icon: Bot },
+          { id: 'creative_studio' as ActiveView, label: '04 Creative Studio', icon: Film },
+          { id: 'social' as ActiveView, label: '05 Distribution', icon: Share2 },
+          { id: 'autonomy' as ActiveView, label: '06 Autonomy', icon: Sliders },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveView(item.id)}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs font-interface transition-all cursor-pointer whitespace-nowrap ${
+                isActive
+                  ? 'bg-[#A16C50] text-[#EEE8DE] font-semibold shadow-lg shadow-[#A16C50]/30'
+                  : 'text-[#C9B49B] hover:text-[#EEE8DE] hover:bg-[#414542]/30'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span className="hidden md:inline font-mono-metrics text-[11px]">{item.label}</span>
+              <span className="inline md:hidden text-[10px]">{item.id.slice(0, 3).toUpperCase()}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
+
 export default App;

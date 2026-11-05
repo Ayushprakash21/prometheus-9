@@ -8,7 +8,7 @@ from app.config import settings
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+    connect_args={"check_same_thread": False, "timeout": 30} if "sqlite" in settings.DATABASE_URL else {}
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -23,7 +23,7 @@ AsyncSessionLocal = async_sessionmaker(
 sync_engine = create_engine(
     settings.SYNC_DATABASE_URL,
     echo=False,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.SYNC_DATABASE_URL else {}
+    connect_args={"check_same_thread": False, "timeout": 30} if "sqlite" in settings.SYNC_DATABASE_URL else {}
 )
 
 SyncSessionLocal = sessionmaker(
@@ -33,13 +33,14 @@ SyncSessionLocal = sessionmaker(
     autoflush=False
 )
 
-# Enforce SQLite foreign keys and WAL mode for high concurrency
+# Enforce SQLite foreign keys, WAL mode, and busy timeout for high concurrency
 @event.listens_for(sync_engine, "connect")
 def set_sqlite_pragma_sync(dbapi_connection, connection_record):
     if "sqlite" in settings.SYNC_DATABASE_URL:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=30000")
         cursor.close()
 
 @event.listens_for(async_engine.sync_engine, "connect")
@@ -48,6 +49,7 @@ def set_sqlite_pragma_async(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=30000")
         cursor.close()
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

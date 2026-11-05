@@ -28,6 +28,17 @@ export interface ProductFeature {
   created_at: string;
 }
 
+export interface ProductSource {
+  id: string;
+  product_id: string;
+  source_type: string;
+  source_url?: string | null;
+  title: string;
+  content_snippet?: string | null;
+  is_primary: boolean;
+  created_at: string;
+}
+
 export interface BrandProfile {
   id: string;
   tone_of_voice: string;
@@ -36,6 +47,83 @@ export interface BrandProfile {
   accent_color: string;
   do_not_mention_claims: string[];
   mandatory_disclaimers: string[];
+  mission_statement?: string | null;
+  positioning_statement?: string | null;
+}
+
+export interface AudiencePersona {
+  id: string;
+  product_id: string;
+  name: string;
+  description: string;
+  pain_points: string[];
+  aspirations: string[];
+  channels: string[];
+  created_at: string;
+}
+
+export interface Campaign {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  title: string;
+  objective: string;
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  target_audience_id?: string | null;
+  budget_cap_cents?: number | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ContentIdea {
+  id: string;
+  organization_id: string;
+  campaign_id: string;
+  product_id: string;
+  title: string;
+  hook: string;
+  format: string;
+  core_thesis: string;
+  rationale: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Script {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  content_idea_id?: string | null;
+  title: string;
+  target_duration_seconds: number;
+  tone: string;
+  script_body: string;
+  status: string;
+  created_at: string;
+}
+
+export interface MediaAsset {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  filename: string;
+  content_hash: string;
+  mime_type: string;
+  file_size_bytes: number;
+  asset_type: string;
+  licensing_status: string;
+  attribution_details?: string | null;
+  created_at: string;
+}
+
+export interface AgentRun {
+  id: string;
+  organization_id: string;
+  agent_role: string;
+  product_id: string;
+  status: string;
+  duration_ms: number;
+  started_at: string;
 }
 
 export interface SystemHealth {
@@ -63,10 +151,14 @@ export interface SpecialistAgent {
   category: string;
   description: string;
   status: string;
+  role_id?: string;
+  model?: string;
+  approval_level?: 'manual' | 'supervised' | 'autonomous';
 }
 
 export interface SocialAccount {
   id: string;
+  organization_id?: string;
   product_id: string;
   platform: string;
   account_name: string;
@@ -85,4 +177,20 @@ export interface PublicationRecord {
   platform_post_url: string;
   published_at: string;
   verified_by_api: boolean;
+}
+
+export type AutonomyMode = 'manual' | 'assisted' | 'supervised' | 'autonomous';
+
+export interface UniverseNode {
+  id: string;
+  label: string;
+  subtitle: string;
+  category: string;
+  x: number;
+  y: number;
+  icon: string;
+  badge?: string;
+  completeness: number; // 0 - 100%
+  status: 'active' | 'configured' | 'pending' | 'idle';
+  metrics?: { label: string; value: string }[];
 }
