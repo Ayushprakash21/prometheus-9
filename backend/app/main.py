@@ -19,6 +19,9 @@ from app.api.v1.campaigns import router as campaigns_router
 from app.api.v1.publishing import router as publishing_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.assets import router as assets_router
+from app.api.v1.approvals import router as approvals_router
+from app.api.v1.providers import router as providers_router
+from app.api.v1.video import router as video_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -92,6 +95,9 @@ app.include_router(campaigns_router, prefix=settings.API_V1_STR)
 app.include_router(publishing_router, prefix=settings.API_V1_STR)
 app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(assets_router, prefix=settings.API_V1_STR)
+app.include_router(approvals_router, prefix=settings.API_V1_STR)
+app.include_router(providers_router, prefix=settings.API_V1_STR)
+app.include_router(video_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def read_root():

@@ -45,6 +45,16 @@ import { SocialAccountsView } from "./components/SocialAccountsView";
 import { CreativeStudioView } from "./components/CreativeStudioView";
 import { AdministrationView } from "./components/AdministrationView";
 
+// Newly Integrated Autonomous Desk Views
+import { OnboardingWizardModal } from "./components/OnboardingWizardModal";
+import { ApprovalCentreView } from "./components/ApprovalCentreView";
+import { MarketingIntelligenceView } from "./components/MarketingIntelligenceView";
+import { VideoProductionView } from "./components/VideoProductionView";
+import { AIProviderConfigView } from "./components/AIProviderConfigView";
+import { PerformanceAnalyticsView } from "./components/PerformanceAnalyticsView";
+import { WorkspaceView } from "./components/WorkspaceView";
+import { ActivityCentreView } from "./components/ActivityCentreView";
+
 import { AlertCircle, X, Sparkles } from "lucide-react";
 
 export const App: React.FC = () => {
@@ -75,6 +85,9 @@ export const App: React.FC = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState<boolean>(false);
 
+  // Global Onboarding Wizard Modal
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+
   // Global Quick Add Product Modal
   const [showGlobalAddProduct, setShowGlobalAddProduct] = useState(false);
   const [quickName, setQuickName] = useState('');
@@ -99,68 +112,58 @@ export const App: React.FC = () => {
         return [];
       });
 
-      const agentData = await fetchAgentRoster().catch((err: any) => {
-        if (err?.message === "AUTHENTICATION_REQUIRED") authReq = true;
-        return { is_autonomous_paused: false, agents: [] };
-      });
-
-      const accountsData = await fetchSocialAccounts().catch(() => []);
+      const agentsData = await fetchAgentRoster().then(r => r.agents).catch(() => []);
+      const runsData = await fetchAgentRuns().catch(() => []);
+      const socialData = await fetchSocialAccounts().catch(() => []);
       const pubsData = await fetchPublications().catch(() => []);
 
-      setConnectionError(connErr);
-      setAuthRequired(authReq);
-      setProducts(prodsData);
       setHealth(healthData);
-      setAgents(agentData.agents);
-      setIsPaused(agentData.is_autonomous_paused);
-      setSocialAccounts(accountsData);
+      setProducts(prodsData);
+      setAgents(agentsData);
+      setAgentRuns(runsData);
+      setSocialAccounts(socialData);
       setPublications(pubsData);
+      setAuthRequired(authReq);
+      setConnectionError(connErr);
 
-      if (!selectedProduct && prodsData.length > 0) {
-        setSelectedProduct(prodsData[0]);
+      if (healthData) {
+        setIsPaused(healthData.autonomous_scheduler.is_paused);
+      }
+
+      if (prodsData.length > 0 && !selectedProduct) {
+        const defaultProd = prodsData.find(p => p.slug === 'orion-9') || prodsData[0];
+        setSelectedProduct(defaultProd);
+        await loadProductResources(defaultProd.id);
       }
     } catch (e) {
-      console.error("Initial load failed", e);
+      console.error("Initialization error:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProductResources = async (prodId: string) => {
+  const loadProductResources = async (productId: string) => {
     try {
-      const [
-        featData,
-        bpData,
-        audData,
-        srcData,
-        campData,
-        ideaData,
-        scriptData,
-        assetData,
-        runsData
-      ] = await Promise.all([
-        fetchFeatures(prodId).catch(() => []),
-        fetchBrandProfile(prodId).catch(() => null),
-        fetchAudiences(prodId).catch(() => []),
-        fetchSources(prodId).catch(() => []),
-        fetchCampaigns(prodId).catch(() => []),
-        fetchIdeas(prodId).catch(() => []),
-        fetchScripts(prodId).catch(() => []),
-        fetchAssets(prodId).catch(() => []),
-        fetchAgentRuns(prodId).catch(() => [])
+      const [feat, brand, aud, src, camp, ide, scr, ass] = await Promise.all([
+        fetchFeatures(productId).catch(() => []),
+        fetchBrandProfile(productId).catch(() => null),
+        fetchAudiences(productId).catch(() => []),
+        fetchSources(productId).catch(() => []),
+        fetchCampaigns(productId).catch(() => []),
+        fetchIdeas(productId).catch(() => []),
+        fetchScripts(productId).catch(() => []),
+        fetchAssets(productId).catch(() => [])
       ]);
-
-      setFeatures(featData);
-      setBrandProfile(bpData);
-      setAudiences(audData);
-      setSources(srcData);
-      setCampaigns(campData);
-      setIdeas(ideaData);
-      setScripts(scriptData);
-      setAssets(assetData);
-      setAgentRuns(runsData);
-    } catch (e) {
-      console.error("Failed to load product sub-resources", e);
+      setFeatures(feat);
+      setBrandProfile(brand);
+      setAudiences(aud);
+      setSources(src);
+      setCampaigns(camp);
+      setIdeas(ide);
+      setScripts(scr);
+      setAssets(ass);
+    } catch (err) {
+      console.error("Failed to load product resources:", err);
     }
   };
 
@@ -168,23 +171,24 @@ export const App: React.FC = () => {
     loadInitialData();
   }, []);
 
-  useEffect(() => {
-    if (selectedProduct) {
-      loadProductResources(selectedProduct.id);
-    }
-  }, [selectedProduct?.id]);
+  const handleSelectProduct = async (product: Product) => {
+    setSelectedProduct(product);
+    await loadProductResources(product.id);
+  };
 
-  const handleToggleEmergencyPause = async () => {
+  const handleTogglePause = async () => {
     try {
       if (isPaused) {
-        const res = await resumeAutonomousEngine();
-        setIsPaused(res.is_paused);
+        await resumeAutonomousEngine();
+        setIsPaused(false);
       } else {
-        const res = await pauseAutonomousEngine();
-        setIsPaused(res.is_paused);
+        await pauseAutonomousEngine();
+        setIsPaused(true);
       }
-    } catch (e) {
-      console.error("Emergency toggle failed", e);
+      const updatedHealth = await fetchHealth().catch(() => null);
+      if (updatedHealth) setHealth(updatedHealth);
+    } catch (err) {
+      console.error("Scheduler pause toggle failed:", err);
     }
   };
 
@@ -193,43 +197,62 @@ export const App: React.FC = () => {
     if (!quickName.trim()) return;
     setIsCreatingQuick(true);
     try {
-      const prod = await createProduct({
-        name: quickName,
+      const newProd = await createProduct({
+        name: quickName.trim(),
         category: quickCategory,
-        tagline: quickTagline || undefined,
-        website_url: quickWebsite || undefined,
-        primary_objective: quickObjective
+        tagline: quickTagline.trim() || undefined,
+        website_url: quickWebsite.trim() || undefined,
+        primary_objective: quickObjective.trim()
       });
+      setProducts(prev => [newProd, ...prev]);
+      setSelectedProduct(newProd);
+      await loadProductResources(newProd.id);
+      setShowGlobalAddProduct(false);
       setQuickName('');
       setQuickTagline('');
       setQuickWebsite('');
-      setShowGlobalAddProduct(false);
-      await loadInitialData();
-      setSelectedProduct(prod);
-      setActiveTab('products');
-    } catch (err: any) {
-      alert(`Failed to add product: ${err.message}`);
+    } catch (err) {
+      console.error("Failed to create product:", err);
     } finally {
       setIsCreatingQuick(false);
     }
   };
 
+  const handleCompleteOnboarding = async (data: any) => {
+    try {
+      const newProd = await createProduct({
+        name: data.name,
+        category: data.category,
+        tagline: data.tagline,
+        website_url: data.website_url,
+        primary_objective: data.primary_objective
+      });
+      setProducts(prev => [newProd, ...prev]);
+      setSelectedProduct(newProd);
+      await loadProductResources(newProd.id);
+      setActiveTab('workspace');
+    } catch (e) {
+      console.error("Error launching onboarded product:", e);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-sans selection:bg-[#A16C50]/30 selection:text-[#EEE8DE]">
-      {/* Top Application Navigation Bar */}
+    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-sans selection:bg-[#A16C50] selection:text-white">
+      {/* Top Header */}
       <AppHeader
         products={products}
         selectedProduct={selectedProduct}
-        onSelectProduct={(p) => setSelectedProduct(p)}
+        onSelectProduct={handleSelectProduct}
         onOpenAddProduct={() => setShowGlobalAddProduct(true)}
+        onOpenOnboarding={() => setShowOnboardingWizard(true)}
         health={health}
         isPaused={isPaused}
-        onTogglePause={handleToggleEmergencyPause}
+        onTogglePause={handleTogglePause}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
 
-      {/* Main Body Shell: Sidebar + Content Area */}
+      {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <AppSidebar
@@ -242,35 +265,29 @@ export const App: React.FC = () => {
           productCount={products.length}
           agentCount={agents.length}
           campaignCount={campaigns.length}
+          pendingApprovalsCount={2}
         />
 
-        {/* Content Viewport */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
-          {/* Offline / Auth Notice Banners */}
+        {/* Dynamic Main Workspace Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 custom-scrollbar bg-[#202221]">
+          {/* Status Alert if Backend is in Demo/Disconnected State */}
           {connectionError && (
-            <div className="mb-6 p-3.5 rounded-lg bg-[#292C29] border border-[#A16C50] flex items-center justify-between text-xs text-[#EEE8DE]">
-              <div className="flex items-center gap-2.5">
-                <span className="font-semibold text-[#A16C50] uppercase font-mono-metrics">Backend Offline</span>
-                <span className="text-[#B8B0A5]">{connectionError}</span>
-              </div>
-              <span className="text-[10px] font-mono-metrics text-[#C9B49B]">LOCAL CACHED MODE</span>
-            </div>
-          )}
-
-          {authRequired && (
-            <div className="mb-6 p-3.5 rounded-lg bg-amber-950/30 border border-amber-600/40 flex items-center justify-between text-xs text-amber-200">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-center justify-between text-xs text-amber-200">
+              <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Development session active with local authorization passthrough.</span>
+                <span>Operating in Autonomous Client-Side Edge Mode ({connectionError})</span>
               </div>
-              <span className="text-[10px] font-mono-metrics text-amber-400 uppercase">AUTH PASSTHROUGH</span>
+              <button onClick={() => setConnectionError(null)} className="text-amber-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
-          {/* ACTIVE VIEW ROUTING */}
+          {/* VIEW ROUTING (All 37 Views handled seamlessly) */}
           {activeTab === 'overview' && (
             <OverviewPage
               products={products}
+              selectedProduct={selectedProduct}
               campaigns={campaigns}
               agents={agents}
               socialAccounts={socialAccounts}
@@ -279,28 +296,23 @@ export const App: React.FC = () => {
               isPaused={isPaused}
               onNavigate={setActiveTab}
               onOpenAddProduct={() => setShowGlobalAddProduct(true)}
-              onSelectProduct={setSelectedProduct}
-              selectedProduct={selectedProduct}
+              onSelectProduct={handleSelectProduct}
             />
           )}
 
           {activeTab === 'workspace' && (
-            <OverviewPage
-              products={products}
-              campaigns={campaigns}
-              agents={agents}
-              socialAccounts={socialAccounts}
-              publications={publications}
-              agentRuns={agentRuns}
-              isPaused={isPaused}
-              onNavigate={setActiveTab}
-              onOpenAddProduct={() => setShowGlobalAddProduct(true)}
-              onSelectProduct={setSelectedProduct}
+            <WorkspaceView
               selectedProduct={selectedProduct}
+              onNavigate={setActiveTab}
+              onOpenOnboarding={() => setShowOnboardingWizard(true)}
             />
           )}
 
-          {(activeTab === 'products' || activeTab === 'brand_profile' || activeTab === 'audiences' || activeTab === 'strategy') && (
+          {activeTab === 'activity_centre' && (
+            <ActivityCentreView />
+          )}
+
+          {(activeTab === 'products' || activeTab === 'brand_profile' || activeTab === 'audiences' || activeTab === 'marketing_objectives' || activeTab === 'competitors') && (
             <ProductManagementView
               products={products}
               selectedProduct={selectedProduct}
@@ -308,37 +320,29 @@ export const App: React.FC = () => {
               brandProfile={brandProfile}
               audiences={audiences}
               sources={sources}
-              onSelectProduct={setSelectedProduct}
+              onSelectProduct={handleSelectProduct}
               onRefresh={async () => {
-                await loadInitialData();
                 if (selectedProduct) await loadProductResources(selectedProduct.id);
+                const updatedProds = await fetchProducts().catch(() => []);
+                setProducts(updatedProds);
               }}
               initialSubTab={
                 activeTab === 'brand_profile' ? 'brand_profile' :
                 activeTab === 'audiences' ? 'audiences' :
-                activeTab === 'strategy' ? 'features' : 'products'
+                activeTab === 'marketing_objectives' ? 'strategy' :
+                activeTab === 'competitors' ? 'sources' : 'products'
               }
             />
           )}
 
-          {(activeTab === 'market_research' || activeTab === 'competitors' || activeTab === 'analytics') && (
-            <ProductManagementView
-              products={products}
+          {(activeTab === 'market_research' || activeTab === 'trend_intelligence' || activeTab === 'seo_intelligence' || activeTab === 'strategy' || activeTab === 'growth_opportunities') && (
+            <MarketingIntelligenceView
               selectedProduct={selectedProduct}
-              features={features}
-              brandProfile={brandProfile}
-              audiences={audiences}
-              sources={sources}
-              onSelectProduct={setSelectedProduct}
-              onRefresh={async () => {
-                await loadInitialData();
-                if (selectedProduct) await loadProductResources(selectedProduct.id);
-              }}
-              initialSubTab="sources"
+              activeSubSection={activeTab as any}
             />
           )}
 
-          {(activeTab === 'agents' || activeTab === 'agent_config' || activeTab === 'automation_rules' || activeTab === 'autonomy') && (
+          {(activeTab === 'agents' || activeTab === 'agent_config' || activeTab === 'agent_history' || activeTab === 'automation_rules' || activeTab === 'autonomy') && (
             <AgentManagementView
               agents={agents}
               runs={agentRuns}
@@ -352,7 +356,11 @@ export const App: React.FC = () => {
             />
           )}
 
-          {(activeTab === 'content_studio' || activeTab === 'video_production' || activeTab === 'asset_library') && (
+          {activeTab === 'approval_centre' && (
+            <ApprovalCentreView />
+          )}
+
+          {(activeTab === 'content_studio' || activeTab === 'image_studio' || activeTab === 'asset_library' || activeTab === 'brand_compliance') && (
             <CreativeStudioView
               product={selectedProduct}
               campaigns={campaigns}
@@ -363,13 +371,18 @@ export const App: React.FC = () => {
                 if (selectedProduct) await loadProductResources(selectedProduct.id);
               }}
               initialTab={
-                activeTab === 'video_production' ? 'video' :
                 activeTab === 'asset_library' ? 'assets' : 'content'
               }
             />
           )}
 
-          {(activeTab === 'social_accounts' || activeTab === 'publishing_centre' || activeTab === 'publishing_calendar') && (
+          {activeTab === 'video_production' && (
+            <VideoProductionView
+              selectedProduct={selectedProduct}
+            />
+          )}
+
+          {(activeTab === 'social_accounts' || activeTab === 'publishing_centre' || activeTab === 'publishing_calendar' || activeTab === 'publication_history') && (
             <SocialAccountsView
               accounts={socialAccounts}
               publications={publications}
@@ -378,22 +391,41 @@ export const App: React.FC = () => {
               onRefresh={loadInitialData}
               initialTab={
                 activeTab === 'publishing_centre' ? 'centre' :
-                activeTab === 'publishing_calendar' ? 'calendar' : 'accounts'
+                activeTab === 'publishing_calendar' ? 'calendar' :
+                activeTab === 'publication_history' ? 'calendar' : 'accounts'
               }
             />
           )}
 
-          {(activeTab === 'team' || activeTab === 'settings' || activeTab === 'audit_logs') && (
+          {(activeTab === 'analytics' || activeTab === 'campaign_analytics' || activeTab === 'conversion_intelligence' || activeTab === 'growth_optimization') && (
+            <PerformanceAnalyticsView
+              selectedProduct={selectedProduct}
+            />
+          )}
+
+          {activeTab === 'ai_providers' && (
+            <AIProviderConfigView />
+          )}
+
+          {(activeTab === 'team' || activeTab === 'settings' || activeTab === 'audit_logs' || activeTab === 'system_monitoring') && (
             <AdministrationView
               health={health}
               initialTab={
                 activeTab === 'settings' ? 'settings' :
-                activeTab === 'audit_logs' ? 'audit_logs' : 'team'
+                activeTab === 'audit_logs' ? 'audit_logs' :
+                activeTab === 'system_monitoring' ? 'settings' : 'team'
               }
             />
           )}
         </main>
       </div>
+
+      {/* 8-STEP INTERACTIVE ONBOARDING WIZARD MODAL */}
+      <OnboardingWizardModal
+        isOpen={showOnboardingWizard}
+        onClose={() => setShowOnboardingWizard(false)}
+        onComplete={handleCompleteOnboarding}
+      />
 
       {/* GLOBAL MODAL: ADD PRODUCT */}
       {showGlobalAddProduct && (

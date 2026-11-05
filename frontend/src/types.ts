@@ -1,33 +1,49 @@
 export type NavTab =
-  // COMMAND
+  // SECTION 1: COMMAND
   | 'overview'
   | 'workspace'
-  // BUSINESS
+  | 'activity_centre'
+  // SECTION 2: BUSINESS MANAGEMENT
   | 'products'
   | 'brand_profile'
   | 'audiences'
-  | 'strategy'
-  // INTELLIGENCE
-  | 'market_research'
+  | 'marketing_objectives'
   | 'competitors'
-  | 'analytics'
-  // AI WORKFORCE
+  // SECTION 3: MARKETING INTELLIGENCE
+  | 'market_research'
+  | 'trend_intelligence'
+  | 'seo_intelligence'
+  | 'strategy'
+  | 'growth_opportunities'
+  // SECTION 4: AI WORKFORCE
   | 'agents'
   | 'agent_config'
+  | 'agent_history'
   | 'automation_rules'
   | 'autonomy'
-  // CREATIVE STUDIO
+  | 'approval_centre'
+  // SECTION 5: CREATIVE STUDIO
   | 'content_studio'
   | 'video_production'
+  | 'image_studio'
   | 'asset_library'
-  // DISTRIBUTION
+  | 'brand_compliance'
+  // SECTION 6: DISTRIBUTION
   | 'social_accounts'
   | 'publishing_centre'
   | 'publishing_calendar'
-  // ADMINISTRATION
+  | 'publication_history'
+  // SECTION 7: PERFORMANCE
+  | 'analytics'
+  | 'campaign_analytics'
+  | 'conversion_intelligence'
+  | 'growth_optimization'
+  // SECTION 8: ADMINISTRATION
   | 'team'
   | 'settings'
-  | 'audit_logs';
+  | 'ai_providers'
+  | 'audit_logs'
+  | 'system_monitoring';
 
 export interface Product {
   id: string;
@@ -93,6 +109,17 @@ export interface AudiencePersona {
   created_at: string;
 }
 
+export interface MarketingObjective {
+  id: string;
+  product_id: string;
+  title: string;
+  kpi_target: string;
+  current_progress: number;
+  target_date: string;
+  channel: string;
+  status: 'on_track' | 'at_risk' | 'achieved';
+}
+
 export interface Campaign {
   id: string;
   organization_id: string;
@@ -145,6 +172,63 @@ export interface MediaAsset {
   licensing_status: string;
   attribution_details?: string | null;
   created_at: string;
+}
+
+export interface VideoRenderJob {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  title: string;
+  aspect_ratio: '9:16' | '16:9' | '1:1';
+  template_style: 'luxury_cinematic' | 'saas_explainer' | 'minimal_editorial' | 'high_impact';
+  voiceover_model: string;
+  subtitles_enabled: boolean;
+  resolution: string;
+  duration_seconds: number;
+  status: 'queued' | 'rendering' | 'completed' | 'failed';
+  progress_percent: number;
+  output_asset_id?: string | null;
+  preview_url?: string;
+  created_at: string;
+}
+
+export interface ApprovalItem {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  item_type: 'marketing_strategy' | 'creative_script' | 'video_render' | 'scheduled_post' | 'budget_allocation';
+  title: string;
+  summary: string;
+  proposed_by_agent: string;
+  risk_score: 'low' | 'medium' | 'high';
+  status: 'pending' | 'approved' | 'rejected' | 'revising';
+  payload: Record<string, any>;
+  reviewer_notes?: string | null;
+  created_at: string;
+}
+
+export interface AutomationRule {
+  id: string;
+  organization_id: string;
+  name: string;
+  trigger_event: string;
+  condition: string;
+  action: string;
+  is_active: boolean;
+  last_triggered_at?: string | null;
+  executions_count: number;
+}
+
+export interface AIProviderConfig {
+  id: string;
+  provider_name: 'gemini' | 'openai' | 'anthropic' | 'local_ollama';
+  model_id: string;
+  is_enabled: boolean;
+  is_default: boolean;
+  status: 'connected' | 'untested' | 'error';
+  latency_ms?: number;
+  masked_key: string;
+  updated_at: string;
 }
 
 export interface AgentRun {

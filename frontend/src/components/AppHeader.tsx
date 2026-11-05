@@ -11,15 +11,18 @@ import {
   CheckCircle2, 
   Layers, 
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Compass
 } from 'lucide-react';
 import { Product, SystemHealth } from '../types';
+import { PrometheusLogo } from './PrometheusLogo';
 
 interface AppHeaderProps {
   products: Product[];
   selectedProduct: Product | null;
   onSelectProduct: (product: Product) => void;
   onOpenAddProduct: () => void;
+  onOpenOnboarding?: () => void;
   health: SystemHealth | null;
   isPaused: boolean;
   onTogglePause: () => void;
@@ -32,6 +35,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   selectedProduct,
   onSelectProduct,
   onOpenAddProduct,
+  onOpenOnboarding,
   health,
   isPaused,
   onTogglePause,
@@ -75,22 +79,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
 
         {/* Brand Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#202221] border border-[#A16C50] flex items-center justify-center">
-            <span className="font-editorial text-sm font-bold text-[#EEE8DE]">P</span>
-          </div>
-          <div>
-            <div className="font-bold text-sm tracking-wide text-[#EEE8DE] flex items-center gap-2">
-              <span>PROMETHEUS-9</span>
-              <span className="text-[10px] font-mono-metrics px-1.5 py-0.5 rounded bg-[#A16C50]/20 text-[#C9B49B] border border-[#A16C50]/30">
-                OS
-              </span>
-            </div>
-            <div className="text-[10px] text-[#B8B0A5] leading-none">
-              Autonomous Growth Platform
-            </div>
-          </div>
-        </div>
+        <PrometheusLogo size={34} showWordmark={true} />
+
+        {/* Onboarding Wizard Quick Button */}
+        {onOpenOnboarding && (
+          <button
+            onClick={onOpenOnboarding}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#A16C50]/15 border border-[#A16C50]/40 text-[#C9B49B] hover:text-[#EEE8DE] hover:bg-[#A16C50]/30 transition-all text-xs"
+            title="Launch 8-Step Business Onboarding Wizard"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#A16C50]" />
+            <span className="font-medium">Onboarding Wizard</span>
+          </button>
+        )}
 
         {/* Product / Organization Selector Dropdown */}
         <div className="relative ml-4 hidden sm:block" ref={productDropdownRef}>

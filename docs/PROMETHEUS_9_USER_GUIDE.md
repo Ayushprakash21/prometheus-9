@@ -1,0 +1,95 @@
+# PROMETHEUS-9 — USER OPERATING HANDBOOK
+## Solo-Founder & Growth Operator Field Manual
+**Platform:** PROMETHEUS-9 Autonomous Growth Platform  
+**Target User:** Solo Founder, Small Business Owner, or Head of Growth  
+
+---
+
+## 1. INTRODUCTION
+
+Welcome to **PROMETHEUS-9**. This application is engineered to operate your entire digital marketing, creative production, and growth engine autonomously without requiring you to manually operate fragmented social tools or write custom scripts.
+
+Follow this handbook to onboard a product, launch autonomous marketing campaigns, review creative outputs, and review verified growth analytics.
+
+---
+
+## 2. GETTING STARTED: THE 8-STEP ONBOARDING WIZARD
+
+When launching PROMETHEUS-9 for the first time or onboarding a new product, launch the **8-Step Business Onboarding Wizard** from the top header or the Workspace desk:
+
+### Step 1: Business Profile & Instant Web Scan
+- Enter your product or company website URL (e.g. `https://yourcompany.com`).
+- Click **Scan URL**. The **Research Director** agent crawls the page and extracts your core capabilities, industry category, and value proposition.
+- Review and refine the extracted business name, tagline, and summary.
+
+### Step 2: Product Features & Verified Claims Guard
+- Enter your key product features.
+- Enter **Deterministic Verified Claims** (e.g., "SOC-2 Type II Certified", "Sub-10ms query latency").
+- *Why this matters:* PROMETHEUS-9 strictly constrains generative AI to these registered facts. AI agents cannot fabricate capabilities or invent non-existent statistics.
+
+### Step 3: Brand Identity & Voice Styling
+- Select your editorial tone of voice (e.g., *Sophisticated Luxury & Confident Authority*, *Direct & Technical*).
+- Configure your brand color tokens (Primary Obsidian Charcoal, Accent Burnished Copper, Secondary Champagne Beige).
+- Enter **Do-Not-Mention Claims** (e.g., "Do not claim overnight riches or non-compliant health outcomes").
+
+### Step 4: Audience & Ideal Customer Profile
+- Define your primary persona (e.g., "VP of Engineering", "Solo Founder & Growth Lead").
+- Detail their daily operational friction and primary digital hangouts (LinkedIn, YouTube Shorts, X).
+
+### Step 5: Growth Objectives & Hard Budget Caps
+- State your primary objective (e.g., "Inbound Enterprise Demo Requests").
+- Set a **Hard Monthly Budget Cap** (e.g., `$2,500.00`). The persistent scheduler will automatically freeze paid operations if this threshold is approached.
+
+### Step 6: Distribution Channels
+- Toggle the channels you wish to activate (YouTube, LinkedIn, X, Instagram, TikTok).
+
+### Step 7: AI Workforce Activation
+- Select between **Supervised Mode** (recommended: AI drafts content; you approve in the Approval Desk) or **Full Autonomy** (AI publishes automatically).
+- Enable the specialized agents you wish to run.
+
+### Step 8: Launch Workspace
+- Review your parameters and click **Launch Autonomous Workspace**. PROMETHEUS-9 initializes your product database, binds verified claims, and prepares your campaign pipeline.
+
+---
+
+## 3. DAILY WORKFLOWS
+
+### A. Reviewing Pending Items in the Approval Centre
+1. Navigate to **AI Workforce → Approval Centre** (or click the badge in the sidebar).
+2. The queue displays pending marketing strategies, scripts, video renders, and scheduled posts.
+3. Click any item to inspect its dossier, target persona, and verified claims compliance.
+4. Choose an action:
+   - **Authorize & Execute:** Immediately queues the item for rendering or social publishing.
+   - **Request Revision:** Type specific instructions (e.g., "Make the first 5 seconds punchier") and the agent will produce a revised version.
+   - **Reject:** Drops the item and logs the rationale in the audit ledger.
+
+### B. Creating Programmatic Videos (FFmpeg Studio)
+1. Navigate to **Creative Studio → Video Production**.
+2. Select your aspect ratio:
+   - **9:16 Vertical:** Optimized for YouTube Shorts, Instagram Reels, TikTok.
+   - **16:9 Widescreen:** Optimized for YouTube Long-Form and LinkedIn Web.
+   - **1:1 Square:** Optimized for feed posts.
+3. Choose a template style (e.g., *Luxury Charcoal*, *SaaS Explainer*).
+4. Enter your title card headline and select a neural voice synthesizer.
+5. Check **Burn Synchronized SRT Subtitles** to ensure accessibility and high retention without sound.
+6. Click **Queue Render Job**. The video engine renders the MP4 file and adds it to your Creative Asset Library.
+
+### C. Viewing Scheduled Publishing
+1. Navigate to **Distribution → Publishing Calendar**.
+2. View all scheduled posts across YouTube, LinkedIn, X, Instagram, and TikTok by day, week, or month.
+3. Each item displays its scheduled publishing time, target product, and verified claims status.
+
+### D. Monitoring Performance & Growth
+1. Navigate to **Performance → Analytics & Performance**.
+2. Review real ingested telemetry: Verified Impressions, Organic Clicks, Video Retention, and Effective ROAS.
+3. Review the **Autonomous Growth Optimizations** generated by the Growth Analyst agent.
+4. Click **Apply to Creative Queue** to implement algorithmic recommendations with one click.
+
+---
+
+## 4. EMERGENCY CONTROLS
+
+If you ever need to halt all automated background activity:
+- In the top header bar, click the **SCHEDULER NOMINAL** status pill.
+- The engine will immediately transition to **ENGINE PAUSED**.
+- All queued jobs, agent executions, and social publishing calls are frozen until you click **Resume Engine**.
