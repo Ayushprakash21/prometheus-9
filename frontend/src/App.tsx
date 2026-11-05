@@ -13,7 +13,8 @@ import {
   SocialAccount, 
   PublicationRecord,
   SystemHealth,
-  AgentRun 
+  AgentRun,
+  NavTab 
 } from "./types";
 import { 
   fetchProducts, 
@@ -30,45 +31,26 @@ import {
   fetchIdeas,
   fetchScripts,
   fetchAssets,
+  createProduct,
   pauseAutonomousEngine,
   resumeAutonomousEngine
 } from "./services/api";
 
-import { BrandUniverseCanvas } from "./components/BrandUniverseCanvas";
-import { BrandWorld } from "./components/BrandWorld";
-import { BrandCreationLab } from "./components/BrandCreationLab";
-import { AgentWorkforceView } from "./components/AgentWorkforceView";
+import { AppHeader } from "./components/AppHeader";
+import { AppSidebar } from "./components/AppSidebar";
+import { OverviewPage } from "./components/OverviewPage";
+import { ProductManagementView } from "./components/ProductManagementView";
+import { AgentManagementView } from "./components/AgentManagementView";
+import { SocialAccountsView } from "./components/SocialAccountsView";
 import { CreativeStudioView } from "./components/CreativeStudioView";
-import { SocialConstellationView } from "./components/SocialConstellationView";
-import { AutonomyControlView } from "./components/AutonomyControlView";
+import { AdministrationView } from "./components/AdministrationView";
 
-import { 
-  Sparkles, 
-  Compass, 
-  Layers, 
-  Bot, 
-  Film, 
-  Share2, 
-  Sliders, 
-  AlertCircle,
-  Play,
-  Pause,
-  Clock,
-  ShieldCheck
-} from "lucide-react";
-
-export type ActiveView = 
-  | 'universe' 
-  | 'brand_world' 
-  | 'creation_lab' 
-  | 'workforce' 
-  | 'creative_studio' 
-  | 'social' 
-  | 'autonomy';
+import { AlertCircle, X, Sparkles } from "lucide-react";
 
 export const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<ActiveView>('universe');
-  const [brandWorldInitialTab, setBrandWorldInitialTab] = useState<string>('identity');
+  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Application Data States
   const [products, setProducts] = useState<Product[]>([]);
@@ -88,24 +70,20 @@ export const App: React.FC = () => {
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
-  // Status & Telemetry States
+  // Status & Telemetry
   const [loading, setLoading] = useState<boolean>(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState<boolean>(false);
-  const [utcTime, setUtcTime] = useState<string>("");
 
-  // Clock Ticker in UTC
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setUtcTime(`${now.toUTCString().slice(17, 25)} UTC`);
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Global Quick Add Product Modal
+  const [showGlobalAddProduct, setShowGlobalAddProduct] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickCategory, setQuickCategory] = useState('Autonomous AI / SaaS');
+  const [quickTagline, setQuickTagline] = useState('');
+  const [quickWebsite, setQuickWebsite] = useState('');
+  const [quickObjective, setQuickObjective] = useState('Autonomous growth and conversion');
+  const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
-  // Primary Data Fetcher
   const loadInitialData = async () => {
     try {
       let authReq = false;
@@ -138,7 +116,6 @@ export const App: React.FC = () => {
       setSocialAccounts(accountsData);
       setPublications(pubsData);
 
-      // Select first product if none selected
       if (!selectedProduct && prodsData.length > 0) {
         setSelectedProduct(prodsData[0]);
       }
@@ -149,7 +126,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Load Brand-Specific Sub-Resources when selectedProduct changes
   const loadProductResources = async (prodId: string) => {
     try {
       const [
@@ -198,51 +174,6 @@ export const App: React.FC = () => {
     }
   }, [selectedProduct?.id]);
 
-  // Handle Universe Node Click (Route into contextual deep workspace)
-  const handleSelectUniverseNode = (nodeId: string) => {
-    switch (nodeId) {
-      case 'identity':
-        setBrandWorldInitialTab('identity');
-        setActiveView('brand_world');
-        break;
-      case 'products':
-        setBrandWorldInitialTab('features');
-        setActiveView('brand_world');
-        break;
-      case 'audience':
-        setBrandWorldInitialTab('audience');
-        setActiveView('brand_world');
-        break;
-      case 'market_intel':
-        setBrandWorldInitialTab('intelligence');
-        setActiveView('brand_world');
-        break;
-      case 'strategy':
-      case 'performance':
-        setActiveView('autonomy');
-        break;
-      case 'campaigns':
-      case 'creative':
-        setActiveView('creative_studio');
-        break;
-      case 'workforce':
-        setActiveView('workforce');
-        break;
-      case 'social':
-        setActiveView('social');
-        break;
-      default:
-        setActiveView('brand_world');
-        break;
-    }
-  };
-
-  const handleBrandCreationSuccess = async (newProd: Product) => {
-    await loadInitialData();
-    setSelectedProduct(newProd);
-    setActiveView('brand_world');
-  };
-
   const handleToggleEmergencyPause = async () => {
     try {
       if (isPaused) {
@@ -257,221 +188,303 @@ export const App: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-interface selection:bg-[#A16C50]/30 selection:text-[#EEE8DE]">
-      {/* FLOATING EDITORIAL TOP HEADER */}
-      <header className="sticky top-0 z-40 w-full px-6 md:px-12 py-3 bg-[#202221]/80 backdrop-blur-xl border-b border-copper-subtle/50 flex items-center justify-between">
-        {/* Brand Monogram & Category */}
-        <div className="flex items-center gap-6">
-          <div 
-            onClick={() => setActiveView('universe')}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <div className="w-8 h-8 rounded-lg bg-[#292d2b] border border-[#A16C50] flex items-center justify-center copper-glow-sm group-hover:scale-105 transition-all">
-              <span className="font-editorial text-sm font-bold text-[#EEE8DE]">P</span>
-            </div>
-            <div>
-              <div className="font-editorial text-lg tracking-wider text-[#EEE8DE] group-hover:text-[#C9B49B] transition-colors leading-none">
-                PROMETHEUS-9
-              </div>
-              <div className="font-mono-metrics text-[9px] text-[#A16C50] uppercase tracking-widest mt-0.5">
-                AUTONOMOUS GROWTH OS
-              </div>
-            </div>
-          </div>
+  const handleCreateQuickProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickName.trim()) return;
+    setIsCreatingQuick(true);
+    try {
+      const prod = await createProduct({
+        name: quickName,
+        category: quickCategory,
+        tagline: quickTagline || undefined,
+        website_url: quickWebsite || undefined,
+        primary_objective: quickObjective
+      });
+      setQuickName('');
+      setQuickTagline('');
+      setQuickWebsite('');
+      setShowGlobalAddProduct(false);
+      await loadInitialData();
+      setSelectedProduct(prod);
+      setActiveTab('products');
+    } catch (err: any) {
+      alert(`Failed to add product: ${err.message}`);
+    } finally {
+      setIsCreatingQuick(false);
+    }
+  };
 
-          {/* Active Brand World Pill */}
-          {selectedProduct && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#292d2b] border border-copper-subtle text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#A16C50]" />
-              <span className="text-[#C9B49B]">Active World:</span>
-              <strong className="text-[#EEE8DE]">{selectedProduct.name}</strong>
+  return (
+    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-sans selection:bg-[#A16C50]/30 selection:text-[#EEE8DE]">
+      {/* Top Application Navigation Bar */}
+      <AppHeader
+        products={products}
+        selectedProduct={selectedProduct}
+        onSelectProduct={(p) => setSelectedProduct(p)}
+        onOpenAddProduct={() => setShowGlobalAddProduct(true)}
+        health={health}
+        isPaused={isPaused}
+        onTogglePause={handleToggleEmergencyPause}
+        mobileMenuOpen={mobileMenuOpen}
+        onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+      />
+
+      {/* Main Body Shell: Sidebar + Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar */}
+        <AppSidebar
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+          mobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+          productCount={products.length}
+          agentCount={agents.length}
+          campaignCount={campaigns.length}
+        />
+
+        {/* Content Viewport */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+          {/* Offline / Auth Notice Banners */}
+          {connectionError && (
+            <div className="mb-6 p-3.5 rounded-lg bg-[#292C29] border border-[#A16C50] flex items-center justify-between text-xs text-[#EEE8DE]">
+              <div className="flex items-center gap-2.5">
+                <span className="font-semibold text-[#A16C50] uppercase font-mono-metrics">Backend Offline</span>
+                <span className="text-[#B8B0A5]">{connectionError}</span>
+              </div>
+              <span className="text-[10px] font-mono-metrics text-[#C9B49B]">LOCAL CACHED MODE</span>
             </div>
           )}
-        </div>
 
-        {/* System Telemetry & UTC Time */}
-        <div className="flex items-center gap-4 md:gap-6">
-          <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono-metrics text-[#C9B49B]">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#A16C50]" />
-              <span>{utcTime || '16:04:00 UTC'}</span>
-            </span>
-            <span>•</span>
-            <span>MMXXVI</span>
-            <span>•</span>
-            <span className="text-[#A16C50]">OP_STATE: NOMINAL</span>
+          {authRequired && (
+            <div className="mb-6 p-3.5 rounded-lg bg-amber-950/30 border border-amber-600/40 flex items-center justify-between text-xs text-amber-200">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Development session active with local authorization passthrough.</span>
+              </div>
+              <span className="text-[10px] font-mono-metrics text-amber-400 uppercase">AUTH PASSTHROUGH</span>
+            </div>
+          )}
+
+          {/* ACTIVE VIEW ROUTING */}
+          {activeTab === 'overview' && (
+            <OverviewPage
+              products={products}
+              campaigns={campaigns}
+              agents={agents}
+              socialAccounts={socialAccounts}
+              publications={publications}
+              agentRuns={agentRuns}
+              isPaused={isPaused}
+              onNavigate={setActiveTab}
+              onOpenAddProduct={() => setShowGlobalAddProduct(true)}
+              onSelectProduct={setSelectedProduct}
+              selectedProduct={selectedProduct}
+            />
+          )}
+
+          {activeTab === 'workspace' && (
+            <OverviewPage
+              products={products}
+              campaigns={campaigns}
+              agents={agents}
+              socialAccounts={socialAccounts}
+              publications={publications}
+              agentRuns={agentRuns}
+              isPaused={isPaused}
+              onNavigate={setActiveTab}
+              onOpenAddProduct={() => setShowGlobalAddProduct(true)}
+              onSelectProduct={setSelectedProduct}
+              selectedProduct={selectedProduct}
+            />
+          )}
+
+          {(activeTab === 'products' || activeTab === 'brand_profile' || activeTab === 'audiences' || activeTab === 'strategy') && (
+            <ProductManagementView
+              products={products}
+              selectedProduct={selectedProduct}
+              features={features}
+              brandProfile={brandProfile}
+              audiences={audiences}
+              sources={sources}
+              onSelectProduct={setSelectedProduct}
+              onRefresh={async () => {
+                await loadInitialData();
+                if (selectedProduct) await loadProductResources(selectedProduct.id);
+              }}
+              initialSubTab={
+                activeTab === 'brand_profile' ? 'brand_profile' :
+                activeTab === 'audiences' ? 'audiences' :
+                activeTab === 'strategy' ? 'features' : 'products'
+              }
+            />
+          )}
+
+          {(activeTab === 'market_research' || activeTab === 'competitors' || activeTab === 'analytics') && (
+            <ProductManagementView
+              products={products}
+              selectedProduct={selectedProduct}
+              features={features}
+              brandProfile={brandProfile}
+              audiences={audiences}
+              sources={sources}
+              onSelectProduct={setSelectedProduct}
+              onRefresh={async () => {
+                await loadInitialData();
+                if (selectedProduct) await loadProductResources(selectedProduct.id);
+              }}
+              initialSubTab="sources"
+            />
+          )}
+
+          {(activeTab === 'agents' || activeTab === 'agent_config' || activeTab === 'automation_rules' || activeTab === 'autonomy') && (
+            <AgentManagementView
+              agents={agents}
+              runs={agentRuns}
+              isPaused={isPaused}
+              onRefresh={loadInitialData}
+              initialTab={
+                activeTab === 'agent_config' ? 'configuration' :
+                activeTab === 'automation_rules' ? 'automation_rules' :
+                activeTab === 'autonomy' ? 'autonomy' : 'directory'
+              }
+            />
+          )}
+
+          {(activeTab === 'content_studio' || activeTab === 'video_production' || activeTab === 'asset_library') && (
+            <CreativeStudioView
+              product={selectedProduct}
+              campaigns={campaigns}
+              ideas={ideas}
+              scripts={scripts}
+              assets={assets}
+              onRefresh={async () => {
+                if (selectedProduct) await loadProductResources(selectedProduct.id);
+              }}
+              initialTab={
+                activeTab === 'video_production' ? 'video' :
+                activeTab === 'asset_library' ? 'assets' : 'content'
+              }
+            />
+          )}
+
+          {(activeTab === 'social_accounts' || activeTab === 'publishing_centre' || activeTab === 'publishing_calendar') && (
+            <SocialAccountsView
+              accounts={socialAccounts}
+              publications={publications}
+              campaigns={campaigns}
+              selectedProduct={selectedProduct}
+              onRefresh={loadInitialData}
+              initialTab={
+                activeTab === 'publishing_centre' ? 'centre' :
+                activeTab === 'publishing_calendar' ? 'calendar' : 'accounts'
+              }
+            />
+          )}
+
+          {(activeTab === 'team' || activeTab === 'settings' || activeTab === 'audit_logs') && (
+            <AdministrationView
+              health={health}
+              initialTab={
+                activeTab === 'settings' ? 'settings' :
+                activeTab === 'audit_logs' ? 'audit_logs' : 'team'
+              }
+            />
+          )}
+        </main>
+      </div>
+
+      {/* GLOBAL MODAL: ADD PRODUCT */}
+      {showGlobalAddProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="w-full max-w-lg p-6 rounded-2xl bg-[#292C29] border border-[#414542] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#414542] pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#A16C50]" />
+                <h3 className="text-sm font-semibold text-[#EEE8DE]">Register New Product</h3>
+              </div>
+              <button onClick={() => setShowGlobalAddProduct(false)} className="text-[#B8B0A5] hover:text-[#EEE8DE]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickProduct} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Product Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Orion-9"
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE] focus:outline-none focus:border-[#A16C50]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={quickCategory}
+                    onChange={(e) => setQuickCategory(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Website URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com"
+                    value={quickWebsite}
+                    onChange={(e) => setQuickWebsite(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Tagline</label>
+                <input
+                  type="text"
+                  placeholder="Brief high-impact product descriptor"
+                  value={quickTagline}
+                  onChange={(e) => setQuickTagline(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Strategic Objective</label>
+                <input
+                  type="text"
+                  value={quickObjective}
+                  onChange={(e) => setQuickObjective(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalAddProduct(false)}
+                  className="px-4 py-2 rounded-lg border border-[#414542] text-xs text-[#B8B0A5]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingQuick}
+                  className="px-5 py-2 rounded-lg bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-semibold text-[#EEE8DE] disabled:opacity-50"
+                >
+                  {isCreatingQuick ? 'Registering...' : 'Register Product'}
+                </button>
+              </div>
+            </form>
           </div>
-
-          {/* Emergency Killswitch Pill */}
-          <button
-            onClick={handleToggleEmergencyPause}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-interface transition-all cursor-pointer ${
-              isPaused 
-                ? 'bg-rose-950/60 border border-rose-500/60 text-rose-300' 
-                : 'bg-[#292d2b] border border-copper-subtle text-[#C9B49B] hover:text-[#EEE8DE]'
-            }`}
-          >
-            {isPaused ? <Play className="w-3 h-3 text-rose-400" /> : <Pause className="w-3 h-3 text-[#A16C50]" />}
-            <span className="font-mono-metrics text-[10px] uppercase font-semibold">
-              {isPaused ? 'HALTED' : 'ACTIVE'}
-            </span>
-          </button>
-
-          {/* Quick Launch Genesis Button */}
-          <button
-            onClick={() => setActiveView('creation_lab')}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#A16C50] hover:bg-[#B87C5E] text-[#EEE8DE] text-xs font-interface font-semibold shadow-md shadow-[#A16C50]/20 transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Genesis Lab</span>
-          </button>
-        </div>
-      </header>
-
-      {/* SYSTEM DIAGNOSTIC WARNINGS (If offline or auth needed) */}
-      {connectionError && (
-        <div className="px-6 md:px-12 py-3 bg-[#A16C50]/20 border-b border-[#A16C50]/60 flex items-center justify-between text-xs text-[#EEE8DE]">
-          <div className="flex items-center gap-3">
-            <span className="font-bold uppercase tracking-wider text-[#A16C50] font-mono-metrics">Backend Offline</span>
-            <span>{connectionError}</span>
-          </div>
-          <span className="font-mono-metrics text-[10px] text-[#C9B49B]">STANDALONE EXPERIENCE</span>
         </div>
       )}
-
-      {authRequired && (
-        <div className="px-6 md:px-12 py-3 bg-amber-950/40 border-b border-amber-600/50 flex items-center justify-between text-xs text-amber-200">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Authenticated session active in development mode. All data persisters are active.</span>
-          </div>
-          <span className="font-mono-metrics text-[10px] text-amber-400 uppercase">LOCAL AUTH PASSTHROUGH</span>
-        </div>
-      )}
-
-      {/* MAIN VIEWPORT */}
-      <main className="flex-1 w-full">
-        {activeView === 'universe' && (
-          <BrandUniverseCanvas
-            product={selectedProduct}
-            features={features}
-            brandProfile={brandProfile}
-            audiences={audiences}
-            campaigns={campaigns}
-            agents={agents}
-            socialAccounts={socialAccounts}
-            isAutonomousPaused={isPaused}
-            onSelectNode={handleSelectUniverseNode}
-            onOpenBrandCreation={() => setActiveView('creation_lab')}
-            onSwitchBrand={(pId) => {
-              const found = products.find(p => p.id === pId);
-              if (found) setSelectedProduct(found);
-            }}
-            allProducts={products}
-          />
-        )}
-
-        {activeView === 'brand_world' && selectedProduct && (
-          <BrandWorld
-            product={selectedProduct}
-            features={features}
-            brandProfile={brandProfile}
-            audiences={audiences}
-            sources={sources}
-            campaigns={campaigns}
-            ideas={ideas}
-            scripts={scripts}
-            assets={assets}
-            onRefresh={async () => {
-              if (selectedProduct) await loadProductResources(selectedProduct.id);
-            }}
-            onClose={() => setActiveView('universe')}
-            initialTab={brandWorldInitialTab}
-          />
-        )}
-
-        {activeView === 'creation_lab' && (
-          <BrandCreationLab
-            onSuccess={handleBrandCreationSuccess}
-            onCancel={() => setActiveView('universe')}
-          />
-        )}
-
-        {activeView === 'workforce' && (
-          <AgentWorkforceView
-            agents={agents}
-            runs={agentRuns}
-            isAutonomousPaused={isPaused}
-            selectedProduct={selectedProduct}
-            onRefresh={loadInitialData}
-            onClose={() => setActiveView('universe')}
-          />
-        )}
-
-        {activeView === 'creative_studio' && (
-          <CreativeStudioView
-            product={selectedProduct}
-            campaigns={campaigns}
-            ideas={ideas}
-            scripts={scripts}
-            assets={assets}
-            onRefresh={async () => {
-              if (selectedProduct) await loadProductResources(selectedProduct.id);
-            }}
-            onClose={() => setActiveView('universe')}
-          />
-        )}
-
-        {activeView === 'social' && (
-          <SocialConstellationView
-            product={selectedProduct}
-            accounts={socialAccounts}
-            publications={publications}
-            onRefresh={loadInitialData}
-            onClose={() => setActiveView('universe')}
-          />
-        )}
-
-        {activeView === 'autonomy' && (
-          <AutonomyControlView
-            isAutonomousPaused={isPaused}
-            onRefresh={loadInitialData}
-            onClose={() => setActiveView('universe')}
-          />
-        )}
-      </main>
-
-      {/* FLOATING LUXURY BOTTOM NAVIGATION DOCK */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-3 py-2 rounded-full bg-[#202221]/90 backdrop-blur-2xl border border-copper-subtle shadow-2xl flex items-center gap-1 sm:gap-2">
-        {[
-          { id: 'universe' as ActiveView, label: '00 Universe', icon: Compass },
-          { id: 'brand_world' as ActiveView, label: '01 Brand Worlds', icon: Layers },
-          { id: 'creation_lab' as ActiveView, label: '02 Genesis Lab', icon: Sparkles },
-          { id: 'workforce' as ActiveView, label: '03 Workforce', icon: Bot },
-          { id: 'creative_studio' as ActiveView, label: '04 Creative Studio', icon: Film },
-          { id: 'social' as ActiveView, label: '05 Distribution', icon: Share2 },
-          { id: 'autonomy' as ActiveView, label: '06 Autonomy', icon: Sliders },
-        ].map((item) => {
-          const Icon = item.icon;
-          const isActive = activeView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveView(item.id)}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs font-interface transition-all cursor-pointer whitespace-nowrap ${
-                isActive
-                  ? 'bg-[#A16C50] text-[#EEE8DE] font-semibold shadow-lg shadow-[#A16C50]/30'
-                  : 'text-[#C9B49B] hover:text-[#EEE8DE] hover:bg-[#414542]/30'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="hidden md:inline font-mono-metrics text-[11px]">{item.label}</span>
-              <span className="inline md:hidden text-[10px]">{item.id.slice(0, 3).toUpperCase()}</span>
-            </button>
-          );
-        })}
-      </nav>
     </div>
   );
 };

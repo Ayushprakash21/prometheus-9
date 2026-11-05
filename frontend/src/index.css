@@ -2,73 +2,61 @@
 
 @layer base {
   :root {
-    --color-obsidian: #202221;
-    --color-graphite: #414542;
-    --color-copper: #A16C50;
-    --color-copper-light: #B87C5E;
-    --color-champagne: #C9B49B;
-    --color-ivory: #EEE8DE;
+    --bg-primary: #202221;
+    --bg-secondary: #292C29;
+    --bg-surface: #303430;
+    --border-subtle: #414542;
+    --accent-primary: #A16C50;
+    --accent-secondary: #C9B49B;
+    --text-primary: #EEE8DE;
+    --text-secondary: #B8B0A5;
+    --status-success: #4E8752;
+    --status-error: #A34848;
   }
 
   body {
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #202221;
     color: #EEE8DE;
     overflow-x: hidden;
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: -0.015em;
+  }
+
   .font-editorial {
-    font-family: 'Bodoni Moda', Georgia, "Times New Roman", serif;
+    font-family: 'Bodoni Moda', Georgia, serif;
     letter-spacing: -0.02em;
-  }
-
-  .font-expressive {
-    font-family: 'Cormorant Garamond', Garamond, Georgia, serif;
-    letter-spacing: 0.03em;
-  }
-
-  .font-interface {
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .font-mono-metrics {
     font-family: 'IBM Plex Mono', monospace;
     letter-spacing: -0.01em;
   }
+
+  .font-secondary {
+    font-family: 'DM Sans', sans-serif;
+  }
 }
 
-/* Charcoal & Copper Luxury Accents */
-.border-copper-subtle {
-  border-color: rgba(161, 108, 80, 0.22);
-}
+/* Restrained Charcoal & Copper borders and surfaces */
+.bg-primary { background-color: #202221; }
+.bg-secondary { background-color: #292C29; }
+.bg-surface { background-color: #303430; }
+.border-subtle { border-color: #414542; }
+.text-copper { color: #A16C50; }
+.text-champagne { color: #C9B49B; }
+.text-secondary { color: #B8B0A5; }
 
-.bg-obsidian-gradient {
-  background: radial-gradient(circle at 50% 30%, #292d2b 0%, #202221 70%, #171817 100%);
-}
-
-.copper-glow {
-  box-shadow: 0 0 35px -5px rgba(161, 108, 80, 0.28);
-}
-
-.copper-glow-sm {
-  box-shadow: 0 0 15px -2px rgba(161, 108, 80, 0.2);
-}
-
-/* Subtle cinematic starfield / celestial grain */
-.cosmic-grid {
-  background-size: 60px 60px;
-  background-image: 
-    linear-gradient(to right, rgba(65, 69, 66, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(65, 69, 66, 0.12) 1px, transparent 1px);
-}
-
-/* Custom scrollbar for Charcoal & Copper */
+/* Custom clean scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #171817;
+  background: #202221;
 }
 ::-webkit-scrollbar-thumb {
   background: #414542;

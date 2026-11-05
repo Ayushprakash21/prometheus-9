@@ -1,3 +1,34 @@
+export type NavTab =
+  // COMMAND
+  | 'overview'
+  | 'workspace'
+  // BUSINESS
+  | 'products'
+  | 'brand_profile'
+  | 'audiences'
+  | 'strategy'
+  // INTELLIGENCE
+  | 'market_research'
+  | 'competitors'
+  | 'analytics'
+  // AI WORKFORCE
+  | 'agents'
+  | 'agent_config'
+  | 'automation_rules'
+  | 'autonomy'
+  // CREATIVE STUDIO
+  | 'content_studio'
+  | 'video_production'
+  | 'asset_library'
+  // DISTRIBUTION
+  | 'social_accounts'
+  | 'publishing_centre'
+  | 'publishing_calendar'
+  // ADMINISTRATION
+  | 'team'
+  | 'settings'
+  | 'audit_logs';
+
 export interface Product {
   id: string;
   organization_id: string;
@@ -180,17 +211,3 @@ export interface PublicationRecord {
 }
 
 export type AutonomyMode = 'manual' | 'assisted' | 'supervised' | 'autonomous';
-
-export interface UniverseNode {
-  id: string;
-  label: string;
-  subtitle: string;
-  category: string;
-  x: number;
-  y: number;
-  icon: string;
-  badge?: string;
-  completeness: number; // 0 - 100%
-  status: 'active' | 'configured' | 'pending' | 'idle';
-  metrics?: { label: string; value: string }[];
-}

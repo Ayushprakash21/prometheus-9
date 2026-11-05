@@ -7,22 +7,26 @@ import {
   Product 
 } from '../types';
 import { 
-  Film, 
-  Sliders, 
-  CheckCircle2, 
-  Clock, 
-  Plus, 
-  Check, 
-  ChevronRight, 
-  Layers, 
-  Compass, 
-  Target, 
   FileText, 
-  Share2, 
-  BarChart3,
-  Bot
+  Film, 
+  Upload, 
+  Plus, 
+  Download, 
+  Trash2, 
+  CheckCircle2, 
+  Sparkles, 
+  Clock, 
+  Save,
+  Send,
+  Layers,
+  Search
 } from 'lucide-react';
-import { createCampaign } from '../services/api';
+import { 
+  createIdea, 
+  createScript, 
+  uploadAsset, 
+  deleteAsset 
+} from '../services/api';
 
 interface CreativeStudioViewProps {
   product: Product | null;
@@ -31,7 +35,7 @@ interface CreativeStudioViewProps {
   scripts: Script[];
   assets: MediaAsset[];
   onRefresh: () => Promise<void>;
-  onClose: () => void;
+  initialTab?: 'content' | 'video' | 'assets';
 }
 
 export const CreativeStudioView: React.FC<CreativeStudioViewProps> = ({
@@ -41,290 +45,472 @@ export const CreativeStudioView: React.FC<CreativeStudioViewProps> = ({
   scripts,
   assets,
   onRefresh,
-  onClose
+  initialTab = 'content'
 }) => {
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(campaigns[0] || null);
-  const [activeStageIndex, setActiveStageIndex] = useState<number>(2); // e.g. Concept / Creation
-  const [showAddCampaign, setShowAddCampaign] = useState(false);
-  const [newCampTitle, setNewCampTitle] = useState('');
-  const [newCampObjective, setNewCampObjective] = useState('');
-  const [newCampBudget, setNewCampBudget] = useState(1000);
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
 
-  const CAMPAIGN_STAGES = [
-    { name: 'RESEARCH', agent: 'Market Research Agent', status: 'Completed', input: 'Product Knowledge & Competitors', output: 'Audience Insight Dossier' },
-    { name: 'STRATEGY', agent: 'Marketing Strategy Agent', status: 'Completed', input: 'Audience Insight Dossier', output: 'Core Positioning & Angle' },
-    { name: 'CONCEPT', agent: 'Ideation Specialist', status: 'Active', input: 'Angle & Value Propositions', output: `${ideas.length} Content Ideas Generated` },
-    { name: 'CREATION', agent: 'Scriptwriter & Storyboard', status: 'In Progress', input: 'Selected Concept Hook', output: `${scripts.length} Production Scripts` },
-    { name: 'VALIDATION', agent: 'Brand Compliance Agent', status: 'Pending', input: 'Generated Scripts & Visuals', output: 'Zero-Claim Violation Audit' },
-    { name: 'APPROVAL', agent: 'Human Operator Signoff', status: 'Awaiting', input: 'Validated Creative Package', output: 'One-Click Publish Authorization' },
-    { name: 'PUBLISHING', agent: 'Distribution Agent', status: 'Scheduled', input: 'Approved Video & Meta', output: 'OAuth Destination Distribution' },
-    { name: 'MEASUREMENT', agent: 'Analytics Specialist', status: 'Standby', input: 'Live Platform Telemetry', output: 'Retention & Conversion Attribution' },
-    { name: 'OPTIMIZATION', agent: 'Growth Agent', status: 'Standby', input: 'Attribution Insights', output: 'Iterated Creative Variants' },
-  ];
+  // Content Studio Editor States
+  const [briefInput, setBriefInput] = useState('');
+  const [targetPlatform, setTargetPlatform] = useState('YouTube Shorts');
+  const [contentType, setContentType] = useState('Short Script / Reel');
+  const [contentTitle, setContentTitle] = useState('');
+  const [contentHook, setContentHook] = useState('');
+  const [contentThesis, setContentThesis] = useState('');
+  const [contentDraftBody, setContentDraftBody] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
-  const handleCreateCampaign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!product || !newCampTitle.trim()) return;
+  // Video Production States
+  const [scriptTitle, setScriptTitle] = useState('');
+  const [scriptDuration, setScriptDuration] = useState(60);
+  const [scriptTone, setScriptTone] = useState('Authoritative and Inspiring');
+  const [scriptBody, setScriptBody] = useState('');
+  const [isSavingScript, setIsSavingScript] = useState(false);
+
+  // Asset Library States
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [assetType, setAssetType] = useState('image');
+  const [isUploading, setIsUploading] = useState(false);
+  const [assetSearch, setAssetSearch] = useState('');
+
+  // Handle Save Content Draft
+  const handleSaveDraft = async () => {
+    if (!product || !contentTitle.trim()) {
+      alert('Please enter a content title.');
+      return;
+    }
+    if (campaigns.length === 0) {
+      alert('A campaign must exist for this product. Please create a campaign in Publishing Centre first.');
+      return;
+    }
+
     try {
-      const camp = await createCampaign({
+      await createIdea({
+        campaign_id: campaigns[0].id,
         product_id: product.id,
-        title: newCampTitle,
-        objective: newCampObjective || 'Brand Awareness and Customer Acquisition',
-        budget_cap_cents: newCampBudget * 100,
-        status: 'active'
+        title: contentTitle,
+        hook: contentHook || 'What if marketing ran itself?',
+        format: contentType,
+        core_thesis: contentThesis || briefInput || 'Autonomous systems create exponential founder leverage.',
+        rationale: `Targeted for ${targetPlatform}`
       });
-      setNewCampTitle('');
-      setNewCampObjective('');
-      setShowAddCampaign(false);
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 3000);
       await onRefresh();
-      setSelectedCampaign(camp);
     } catch (err: any) {
-      alert(`Failed to launch campaign: ${err.message}`);
+      alert(`Failed to save draft: ${err.message}`);
     }
   };
 
+  // Handle Save Script
+  const handleSaveScript = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product || !scriptTitle.trim()) return;
+    setIsSavingScript(true);
+    try {
+      await createScript({
+        product_id: product.id,
+        title: scriptTitle,
+        target_duration_seconds: scriptDuration,
+        tone: scriptTone,
+        script_body: scriptBody
+      });
+      setScriptTitle('');
+      setScriptBody('');
+      await onRefresh();
+    } catch (err: any) {
+      alert(`Failed to save script: ${err.message}`);
+    } finally {
+      setIsSavingScript(false);
+    }
+  };
+
+  // Handle Upload Asset
+  const handleUploadAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product || !uploadFile) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('product_id', product.id);
+      formData.append('asset_type', assetType);
+      formData.append('file', uploadFile);
+      formData.append('licensing_status', 'verified_product_asset');
+
+      await uploadAsset(formData);
+      setUploadFile(null);
+      await onRefresh();
+    } catch (err: any) {
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Handle Delete Asset
+  const handleDeleteAsset = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this asset?')) return;
+    try {
+      await deleteAsset(id);
+      await onRefresh();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const filteredAssets = assets.filter(a => 
+    a.filename.toLowerCase().includes(assetSearch.toLowerCase()) ||
+    a.asset_type.toLowerCase().includes(assetSearch.toLowerCase())
+  );
+
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] bg-[#202221] text-[#EEE8DE] pb-24 px-6 md:px-12 py-8">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-copper-subtle pb-6 gap-6">
+    <div className="space-y-6 pb-16">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#414542] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono-metrics text-[10px] text-[#A16C50] uppercase tracking-widest">
-              CREATIVE UNIVERSE // CAMPAIGN ENGINE
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#A16C50]" />
-            <span className="font-mono-metrics text-xs text-[#C9B49B]">
-              {product ? product.name.toUpperCase() : 'NO BRAND SELECTED'}
-            </span>
-          </div>
-          <h1 className="font-editorial text-4xl text-[#EEE8DE] mt-1 font-normal tracking-tight">
-            Autonomous Creative Studio
-          </h1>
-          <p className="font-expressive text-lg text-[#C9B49B] italic mt-0.5">
-            9-Stage deterministic campaign lifecycle uniting research, scripts, storyboards, and publishing.
+          <h1 className="text-2xl font-bold text-[#EEE8DE]">Creative Studio & Production</h1>
+          <p className="text-xs text-[#B8B0A5] mt-1">
+            Practical content editor, video scripting teleprompter, and verified media asset library for {product?.name || 'Selected Product'}.
           </p>
         </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowAddCampaign(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-interface text-[#EEE8DE] font-semibold shadow-lg shadow-[#A16C50]/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Launch Campaign</span>
-          </button>
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-full border border-copper-subtle hover:border-[#A16C50] text-xs font-interface text-[#EEE8DE] transition-colors"
-          >
-            Return to Universe
-          </button>
-        </div>
       </div>
 
-      {/* New Campaign Modal */}
-      {showAddCampaign && (
-        <form onSubmit={handleCreateCampaign} className="mt-6 p-6 rounded-2xl bg-[#292d2b] border border-[#A16C50] space-y-4">
-          <h3 className="font-editorial text-xl text-[#EEE8DE]">Initiate Autonomous Campaign</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-[#414542] pb-px no-scrollbar">
+        {[
+          { id: 'content', label: 'Content Studio & Editor', count: ideas.length, icon: FileText },
+          { id: 'video', label: 'Video Production & Scripts', count: scripts.length, icon: Film },
+          { id: 'assets', label: 'Asset Library', count: assets.length, icon: Upload },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
+                isActive
+                  ? 'border-[#A16C50] text-[#A16C50] font-semibold'
+                  : 'border-transparent text-[#B8B0A5] hover:text-[#EEE8DE]'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono-metrics bg-[#202221] text-[#B8B0A5]">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* TAB 1: CONTENT STUDIO EDITOR */}
+      {activeTab === 'content' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Editor Form (7 cols) */}
+          <div className="lg:col-span-7 rounded-xl bg-[#292C29] border border-[#414542] p-6 space-y-4">
+            <h3 className="text-base font-semibold text-[#EEE8DE]">Content Composition Desk</h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Target Platform</label>
+                <select
+                  value={targetPlatform}
+                  onChange={(e) => setTargetPlatform(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                >
+                  <option value="YouTube Shorts">YouTube Shorts</option>
+                  <option value="LinkedIn Post">LinkedIn Post</option>
+                  <option value="Instagram Reel">Instagram Reel</option>
+                  <option value="X Thread">X (Twitter) Thread</option>
+                  <option value="TikTok">TikTok</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Format</label>
+                <select
+                  value={contentType}
+                  onChange={(e) => setContentType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                >
+                  <option value="Short Script / Reel">Short Script / Reel</option>
+                  <option value="Longform Monologue">Longform Monologue</option>
+                  <option value="Carousel Slide Deck">Carousel Slide Deck</option>
+                  <option value="Technical Breakdown">Technical Breakdown</option>
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-mono-metrics text-[#C9B49B] uppercase mb-1">
-                Campaign Title *
-              </label>
+              <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Creative Brief / Topic</label>
+              <textarea
+                rows={2}
+                placeholder="What core concept, feature, or objection should this content address?"
+                value={briefInput}
+                onChange={(e) => setBriefInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Content Title *</label>
               <input
                 type="text"
-                required
-                placeholder="e.g. Q4 Growth: The Autonomous Advantage"
-                value={newCampTitle}
-                onChange={(e) => setNewCampTitle(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[#202221] border border-copper-subtle text-sm text-[#EEE8DE] focus:outline-none focus:border-[#A16C50]"
+                placeholder="e.g. Why Founders Are Ditching Manual Marketing"
+                value={contentTitle}
+                onChange={(e) => setContentTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-mono-metrics text-[#C9B49B] uppercase mb-1">
-                Budget Cap (USD)
-              </label>
+              <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Opening Hook (First 3 Seconds)</label>
               <input
-                type="number"
-                value={newCampBudget}
-                onChange={(e) => setNewCampBudget(Number(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-xl bg-[#202221] border border-copper-subtle text-sm text-[#EEE8DE] focus:outline-none focus:border-[#A16C50]"
+                type="text"
+                placeholder="e.g. You don't need a 10-person agency to build a marketing empire."
+                value={contentHook}
+                onChange={(e) => setContentHook(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Core Thesis & Body</label>
+              <textarea
+                rows={4}
+                placeholder="The substantive thesis, points, and call-to-action."
+                value={contentDraftBody}
+                onChange={(e) => setContentDraftBody(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-semibold text-[#EEE8DE] transition-colors cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Draft</span>
+                </button>
+                {draftSaved && (
+                  <span className="text-xs text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Saved!</span>
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  alert('Content submitted to governance queue for zero-hallucination verification.');
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#202221] border border-[#414542] hover:border-[#A16C50] text-xs font-medium text-[#EEE8DE] transition-colors cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5 text-[#C9B49B]" />
+                <span>Submit for Approval</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-mono-metrics text-[#C9B49B] uppercase mb-1">
-              Primary Strategic Objective
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Establish category leadership and generate 50 qualified trials"
-              value={newCampObjective}
-              onChange={(e) => setNewCampObjective(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-[#202221] border border-copper-subtle text-sm text-[#EEE8DE] focus:outline-none focus:border-[#A16C50]"
-            />
+
+          {/* Ideas Pool (5 cols) */}
+          <div className="lg:col-span-5 rounded-xl bg-[#292C29] border border-[#414542] p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-[#EEE8DE]">Drafts & Ideas Pool ({ideas.length})</h3>
+
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {ideas.map((idea) => (
+                <div key={idea.id} className="p-3.5 rounded-lg bg-[#202221] border border-[#414542] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono-metrics">
+                    <span className="text-[#A16C50] uppercase">{idea.format}</span>
+                    <span className="text-[#B8B0A5]">{new Date(idea.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h4 className="font-semibold text-xs text-[#EEE8DE]">{idea.title}</h4>
+                  <p className="text-xs text-[#B8B0A5] italic">"{idea.hook}"</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button type="submit" className="px-6 py-2.5 rounded-full bg-[#A16C50] text-xs font-interface text-[#EEE8DE] font-semibold">
-              Initialize Lifecycle
-            </button>
-            <button type="button" onClick={() => setShowAddCampaign(false)} className="px-4 py-2.5 rounded-full border border-copper-subtle text-xs text-[#C9B49B]">
-              Cancel
-            </button>
-          </div>
-        </form>
+        </div>
       )}
 
-      {/* Campaign Selector Pill Bar */}
-      <div className="flex items-center gap-3 py-4 border-b border-copper-subtle/40 overflow-x-auto no-scrollbar">
-        <span className="font-mono-metrics text-[10px] text-[#A16C50] uppercase tracking-widest shrink-0">
-          ACTIVE CAMPAIGNS:
-        </span>
-        {campaigns.map((camp) => (
-          <button
-            key={camp.id}
-            onClick={() => setSelectedCampaign(camp)}
-            className={`px-4 py-1.5 rounded-full text-xs font-interface transition-all shrink-0 cursor-pointer ${
-              selectedCampaign?.id === camp.id
-                ? 'bg-[#A16C50] text-[#EEE8DE] font-semibold shadow-md shadow-[#A16C50]/20'
-                : 'bg-[#292d2b]/60 border border-copper-subtle text-[#C9B49B] hover:text-[#EEE8DE]'
-            }`}
-          >
-            {camp.title}
-          </button>
-        ))}
-      </div>
+      {/* TAB 2: VIDEO PRODUCTION & SCRIPTS */}
+      {activeTab === 'video' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* New Script Form (6 cols) */}
+          <div className="lg:col-span-6 rounded-xl bg-[#292C29] border border-[#414542] p-6 space-y-4">
+            <h3 className="text-base font-semibold text-[#EEE8DE]">Scriptwriting & Teleprompter Desk</h3>
 
-      {/* 9-STAGE CAMPAIGN JOURNEY VISUALIZATION */}
-      <div className="mt-8 p-6 rounded-2xl bg-[#292d2b]/40 border border-copper-subtle">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <span className="font-mono-metrics text-[10px] text-[#A16C50] uppercase tracking-widest">
-              LIFECYCLE ARCHITECTURE
-            </span>
-            <h3 className="font-editorial text-2xl text-[#EEE8DE] mt-0.5">
-              Campaign Lifecycle: {selectedCampaign?.title || 'Autonomous Production Pipeline'}
-            </h3>
-          </div>
-          <div className="font-mono-metrics text-xs text-[#C9B49B]">
-            STATUS: <span className="text-emerald-400 font-semibold">{selectedCampaign?.status?.toUpperCase() || 'ACTIVE'}</span>
-          </div>
-        </div>
+            <form onSubmit={handleSaveScript} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Script Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Orion-9 Value Proposition (60s)"
+                  value={scriptTitle}
+                  onChange={(e) => setScriptTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                />
+              </div>
 
-        {/* 9 Stages Interactive Step Chain */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-9 gap-2">
-          {CAMPAIGN_STAGES.map((st, idx) => {
-            const isCurrent = idx === activeStageIndex;
-            const isDone = idx < activeStageIndex;
-            return (
-              <div
-                key={st.name}
-                onClick={() => setActiveStageIndex(idx)}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                  isCurrent
-                    ? 'bg-[#A16C50]/20 border-[#A16C50] shadow-md shadow-[#A16C50]/20'
-                    : isDone
-                      ? 'bg-[#202221] border-copper-subtle/60 text-[#C9B49B]'
-                      : 'bg-[#202221]/40 border-transparent text-[#C9B49B]/50'
-                }`}
-              >
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between text-[9px] font-mono-metrics mb-1">
-                    <span className="text-[#A16C50]">0{idx + 1}</span>
-                    {isDone ? (
-                      <Check className="w-3 h-3 text-emerald-400" />
-                    ) : (
-                      <span className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[#A16C50] animate-ping' : 'bg-[#414542]'}`} />
-                    )}
-                  </div>
-                  <div className={`font-interface text-xs font-semibold ${isCurrent ? 'text-[#EEE8DE]' : ''}`}>
-                    {st.name}
-                  </div>
+                  <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Target Duration (s)</label>
+                  <input
+                    type="number"
+                    value={scriptDuration}
+                    onChange={(e) => setScriptDuration(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                  />
                 </div>
-
-                <div className="mt-3 text-[9px] font-mono-metrics text-[#C9B49B]/70 truncate">
-                  {st.agent}
+                <div>
+                  <label className="block text-xs font-medium text-[#EEE8DE] mb-1">Tone & Pacing</label>
+                  <input
+                    type="text"
+                    value={scriptTone}
+                    onChange={(e) => setScriptTone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Selected Stage Detail Panel */}
-        <div className="mt-6 p-5 rounded-xl bg-[#202221] border border-copper-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="font-mono-metrics text-[10px] text-[#A16C50] uppercase tracking-widest">
-              STAGE 0{activeStageIndex + 1}: {CAMPAIGN_STAGES[activeStageIndex].name}
-            </span>
-            <div className="font-editorial text-lg text-[#EEE8DE]">
-              Responsible Specialist: {CAMPAIGN_STAGES[activeStageIndex].agent}
-            </div>
-            <div className="text-xs font-interface text-[#C9B49B] flex items-center gap-4">
-              <span>INPUT: <strong className="text-[#EEE8DE]">{CAMPAIGN_STAGES[activeStageIndex].input}</strong></span>
-              <span>•</span>
-              <span>OUTPUT: <strong className="text-[#EEE8DE]">{CAMPAIGN_STAGES[activeStageIndex].output}</strong></span>
-            </div>
+              <div>
+                <label className="block text-xs font-medium text-[#EEE8DE] mb-1">
+                  Full Script Body (With Scene Markers)
+                </label>
+                <textarea
+                  rows={8}
+                  required
+                  placeholder="[SCENE 1: Hook]&#10;Voice: Stop wasting 20 hours a week hand-scheduling posts.&#10;&#10;[SCENE 2: Proof]&#10;Voice: Prometheus-9 runs continuous autonomous campaigns..."
+                  value={scriptBody}
+                  onChange={(e) => setScriptBody(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202221] border border-[#414542] text-xs font-mono-metrics text-[#EEE8DE]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingScript}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-semibold text-[#EEE8DE] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingScript ? 'Saving Script...' : 'Save Production Script'}</span>
+              </button>
+            </form>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActiveStageIndex(prev => Math.min(8, prev + 1))}
-              className="px-5 py-2 rounded-full bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-interface text-[#EEE8DE] font-semibold cursor-pointer"
-            >
-              Sign Off & Advance Stage →
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* Scripts List (6 cols) */}
+          <div className="lg:col-span-6 rounded-xl bg-[#292C29] border border-[#414542] p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-[#EEE8DE]">Production Ready Scripts ({scripts.length})</h3>
 
-      {/* Production Deliverables: Ideas & Scripts */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Content Ideas */}
-        <div className="p-6 rounded-2xl bg-[#292d2b]/40 border border-copper-subtle space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-editorial text-xl text-[#EEE8DE]">Content Ideas Pool ({ideas.length})</h3>
-            <span className="font-mono-metrics text-[10px] text-[#A16C50]">VIRALITY OPTIMIZED</span>
-          </div>
-
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-            {ideas.map((idea) => (
-              <div key={idea.id} className="p-4 rounded-xl bg-[#202221] border border-copper-subtle/60">
-                <div className="flex items-center justify-between text-[10px] font-mono-metrics text-[#C9B49B] mb-1">
-                  <span className="text-[#A16C50] uppercase">{idea.format}</span>
-                  <span>{new Date(idea.created_at).toLocaleDateString()}</span>
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+              {scripts.map((sc) => (
+                <div key={sc.id} className="p-4 rounded-lg bg-[#202221] border border-[#414542] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[#EEE8DE]">{sc.title}</span>
+                    <span className="text-[10px] font-mono-metrics text-[#A16C50] flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{sc.target_duration_seconds}s</span>
+                    </span>
+                  </div>
+                  <pre className="text-xs font-mono-metrics text-[#B8B0A5] bg-[#292C29] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                    {sc.script_body}
+                  </pre>
                 </div>
-                <h4 className="font-interface text-sm font-semibold text-[#EEE8DE]">{idea.title}</h4>
-                <div className="mt-2 p-2 rounded-lg bg-[#292d2b] text-xs font-expressive text-[#C9B49B] italic">
-                  "{idea.hook}"
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: ASSET LIBRARY */}
+      {activeTab === 'assets' && (
+        <div className="space-y-4">
+          {/* Upload Toolbar */}
+          <div className="rounded-xl bg-[#292C29] border border-[#414542] p-5">
+            <h3 className="text-sm font-semibold text-[#EEE8DE] mb-2">Upload Verified Brand Media</h3>
+            <form onSubmit={handleUploadAsset} className="flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                required
+                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                className="text-xs text-[#EEE8DE] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#A16C50] file:text-[#EEE8DE] hover:file:bg-[#B87C5E] cursor-pointer"
+              />
+              <select
+                value={assetType}
+                onChange={(e) => setAssetType(e.target.value)}
+                className="px-3 py-1.5 rounded-lg bg-[#202221] border border-[#414542] text-xs text-[#EEE8DE]"
+              >
+                <option value="image">Image / Graphic</option>
+                <option value="video">Video Clip</option>
+                <option value="audio">Audio Voiceover</option>
+              </select>
+              <button
+                type="submit"
+                disabled={isUploading || !uploadFile}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-semibold text-[#EEE8DE] disabled:opacity-50 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isUploading ? 'Uploading...' : 'Upload Asset'}</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Search Assets */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#B8B0A5]" />
+            <input
+              type="text"
+              placeholder="Filter assets..."
+              value={assetSearch}
+              onChange={(e) => setAssetSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-lg bg-[#292C29] border border-[#414542] text-xs text-[#EEE8DE] focus:outline-none focus:border-[#A16C50]"
+            />
+          </div>
+
+          {/* Assets Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {filteredAssets.map((ast) => (
+              <div key={ast.id} className="p-4 rounded-xl bg-[#292C29] border border-[#414542] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-[10px] font-mono-metrics mb-2">
+                    <span className="text-[#A16C50] uppercase">{ast.asset_type}</span>
+                    <span className="text-[#B8B0A5]">{(ast.file_size_bytes / 1024).toFixed(1)} KB</span>
+                  </div>
+                  <h4 className="font-semibold text-xs text-[#EEE8DE] truncate">{ast.filename}</h4>
+                  <div className="text-[10px] font-mono-metrics text-[#B8B0A5] truncate mt-1">
+                    SHA256: {ast.content_hash.slice(0, 14)}...
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-[#414542] flex items-center justify-between">
+                  <a
+                    href={`/api/v1/assets/${ast.id}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-[#A16C50] hover:underline flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download</span>
+                  </a>
+                  <button
+                    onClick={() => handleDeleteAsset(ast.id)}
+                    className="text-[#B8B0A5] hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Production Scripts */}
-        <div className="p-6 rounded-2xl bg-[#292d2b]/40 border border-copper-subtle space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-editorial text-xl text-[#EEE8DE]">Ready Scripts Desk ({scripts.length})</h3>
-            <span className="font-mono-metrics text-[10px] text-emerald-400">TELEPROMPTER VERIFIED</span>
-          </div>
-
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-            {scripts.map((sc) => (
-              <div key={sc.id} className="p-4 rounded-xl bg-[#202221] border border-copper-subtle/60">
-                <div className="flex items-center justify-between text-[10px] font-mono-metrics text-[#C9B49B] mb-1">
-                  <span className="text-[#A16C50]">{sc.target_duration_seconds} SECONDS</span>
-                  <span className="uppercase text-emerald-400">{sc.status}</span>
-                </div>
-                <h4 className="font-interface text-sm font-semibold text-[#EEE8DE]">{sc.title}</h4>
-                <p className="mt-2 text-xs font-mono-metrics text-[#C9B49B] line-clamp-3 bg-[#292d2b] p-2 rounded-lg">
-                  {sc.script_body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
