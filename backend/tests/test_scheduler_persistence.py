@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 from app.core.scheduler import PersistentTaskScheduler
 from app.models.task import PersistentTask, TaskExecutionLog
+from app.models.system import Organization
 from sqlalchemy import select
 
 @pytest.mark.asyncio
@@ -17,7 +18,8 @@ async def test_scheduler_persistence_across_restarts(db_session):
     5. Executes the task successfully.
     """
     unique = str(uuid.uuid4())[:8]
-    org_id = str(uuid.uuid4())
+    org = (await db_session.execute(select(Organization))).scalars().first()
+    org_id = org.id
     task_type = f"test_render_{unique}"
 
     # Step 1: Create a task using Scheduler 1
@@ -75,7 +77,8 @@ async def test_scheduler_retries_and_dead_letter_queue(db_session):
     Verify retry mechanism, exponential backoff, and dead-letter queue transition.
     """
     unique = str(uuid.uuid4())[:8]
-    org_id = str(uuid.uuid4())
+    org = (await db_session.execute(select(Organization))).scalars().first()
+    org_id = org.id
     task_type = f"failing_job_{unique}"
 
     scheduler = PersistentTaskScheduler()
@@ -128,7 +131,8 @@ async def test_scheduler_idempotency_key(db_session):
     Verify that creating tasks with the same idempotency key does not duplicate jobs.
     """
     unique = str(uuid.uuid4())[:8]
-    org_id = str(uuid.uuid4())
+    org = (await db_session.execute(select(Organization))).scalars().first()
+    org_id = org.id
     idempotency_key = f"unique-key-{unique}"
     scheduler = PersistentTaskScheduler()
 

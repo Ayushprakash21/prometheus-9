@@ -92,7 +92,7 @@ async def create_idea(
     idea = ContentIdea(
         organization_id=org.id,
         campaign_id=payload.campaign_id,
-        product_id=payload.product_id,
+        product_id=camp.product_id,
         title=payload.title,
         hook=payload.hook,
         format=payload.format,
@@ -136,7 +136,7 @@ async def create_script(
     script = Script(
         organization_id=org.id,
         idea_id=payload.idea_id,
-        product_id=payload.product_id,
+        product_id=idea.product_id,
         title=payload.title,
         target_duration_seconds=payload.target_duration_seconds,
         hook_segment=payload.hook_segment,

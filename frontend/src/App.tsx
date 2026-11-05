@@ -31,17 +31,34 @@ export const App: React.FC = () => {
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [publications, setPublications] = useState<PublicationRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
-      const [prodsData, healthData, agentData, accountsData, pubsData] = await Promise.all([
-        fetchProducts().catch(() => []),
-        fetchHealth().catch(() => null),
-        fetchAgentRoster().catch(() => ({ is_autonomous_paused: false, agents: [] })),
-        fetchSocialAccounts().catch(() => []),
-        fetchPublications().catch(() => [])
-      ]);
+      let authReq = false;
+      let connErr: string | null = null;
 
+      const healthData = await fetchHealth().catch(() => {
+        connErr = "PROMETHEUS-9 Core Engine backend is currently offline or unreachable.";
+        return null;
+      });
+
+      const prodsData = await fetchProducts().catch((err: any) => {
+        if (err?.message === "AUTHENTICATION_REQUIRED") authReq = true;
+        return [];
+      });
+
+      const agentData = await fetchAgentRoster().catch((err: any) => {
+        if (err?.message === "AUTHENTICATION_REQUIRED") authReq = true;
+        return { is_autonomous_paused: false, agents: [] };
+      });
+
+      const accountsData = await fetchSocialAccounts().catch(() => []);
+      const pubsData = await fetchPublications().catch(() => []);
+
+      setConnectionError(connErr);
+      setAuthRequired(authReq);
       setProducts(prodsData);
       setHealth(healthData);
       setAgents(agentData.agents);
@@ -95,6 +112,26 @@ export const App: React.FC = () => {
         />
 
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#202221]">
+          {connectionError && (
+            <div className="mb-6 p-4 rounded-lg bg-[#A16C50]/20 border border-[#A16C50]/60 flex items-center justify-between text-xs text-[#EEE8DE]">
+              <div className="flex items-center gap-3">
+                <span className="font-bold uppercase tracking-wider text-[#A16C50] font-mono-metrics">Backend Offline</span>
+                <span>{connectionError}</span>
+              </div>
+              <span className="text-[11px] font-mono-metrics text-[#C9B49B]">Status: DEGRADED / LOCAL VIEW</span>
+            </div>
+          )}
+
+          {authRequired && (
+            <div className="mb-6 p-4 rounded-lg bg-[#414542]/40 border border-[#C9B49B]/40 flex items-center justify-between text-xs text-[#EEE8DE]">
+              <div className="flex items-center gap-3">
+                <span className="font-bold uppercase tracking-wider text-[#C9B49B] font-mono-metrics">Authentication Required</span>
+                <span>REST API endpoints are secured with Argon2id + JWT Bearer authentication.</span>
+              </div>
+              <span className="text-[11px] font-mono-metrics text-[#A16C50]">RBAC Active</span>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center h-64 text-[#C9B49B] font-mono-metrics text-xs">
               Initializing PROMETHEUS-9 Operating System...

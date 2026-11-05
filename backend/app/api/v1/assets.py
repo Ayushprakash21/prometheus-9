@@ -70,7 +70,24 @@ async def upload_asset(
             message=f"Product '{product_id}' not found in active organization."
         )
 
-    file_bytes = await file.read()
+    # Bounded streaming read to enforce upload size limit without memory exhaustion
+    CHUNK_SIZE = 65536
+    chunks = []
+    total_bytes = 0
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > settings.MAX_FILE_UPLOAD_BYTES:
+            raise AppException(
+                status_code=400,
+                error_code="FILE_OVERSIZED",
+                message=f"File exceeds maximum allowed upload size of {settings.MAX_FILE_UPLOAD_BYTES // (1024 * 1024)}MB."
+            )
+        chunks.append(chunk)
+
+    file_bytes = b"".join(chunks)
     filename = file.filename or "uploaded_asset"
 
     # Store file safely with magic-byte validation and traversal protection
@@ -127,10 +144,12 @@ async def download_asset(
             message="Media asset not found in organization."
         )
 
+    is_svg = asset.mime_type == "image/svg+xml"
     headers = {
-        "Content-Disposition": f'inline; filename="{asset.filename}"',
+        "Content-Disposition": f'attachment; filename="{asset.filename}"' if is_svg else f'inline; filename="{asset.filename}"',
         "Content-Length": str(asset.file_size_bytes),
-        "X-Content-Type-Options": "nosniff"
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox"
     }
 
     return StreamingResponse(

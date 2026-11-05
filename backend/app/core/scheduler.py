@@ -15,7 +15,7 @@ class PersistentTaskScheduler:
     def __init__(self):
         self.handlers: Dict[str, Callable] = {}
         self.is_paused: bool = settings.AUTONOMOUS_OPERATIONS_PAUSED
-        self.worker_id: str = f"worker-{time.strftime('%Y%m%d%H%M%S')}"
+        self.worker_id: str = f"worker-{time.strftime('%Y%m%d%H%M%S')}-{id(self)}"
         self._polling_task: Optional[asyncio.Task] = None
         self._running: bool = False
         self.last_heartbeat: Optional[datetime] = None
@@ -107,23 +107,96 @@ class PersistentTaskScheduler:
         )
         return (await session.execute(stmt)).scalar_one_or_none()
 
-    async def execute_task_by_id(self, task_id: str, session: AsyncSession) -> bool:
+    async def claim_task_atomically(self, session: AsyncSession, task_id: str) -> bool:
+        """
+        Atomically claims a pending task for this worker using conditional UPDATE.
+        Guarantees that multiple concurrent workers never execute the same task.
+        Returns True if lease acquired, False if already claimed or not pending.
+        """
+        now = datetime.now(timezone.utc)
+        stmt = (
+            update(PersistentTask)
+            .where(
+                and_(
+                    PersistentTask.id == task_id,
+                    PersistentTask.status == "pending"
+                )
+            )
+            .values(
+                status="running",
+                worker_id=self.worker_id,
+                started_at=now,
+                heartbeat_at=now,
+                updated_at=now
+            )
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+        return bool(result.rowcount and result.rowcount > 0)
+
+    async def recover_stale_tasks(self, session: AsyncSession, stale_threshold_seconds: int = 300) -> int:
+        """
+        Recovers tasks abandoned by workers that terminated unexpectedly.
+        """
+        now = datetime.now(timezone.utc)
+        threshold_time = now - timedelta(seconds=stale_threshold_seconds)
+
+        stmt = select(PersistentTask).where(
+            and_(
+                PersistentTask.status == "running",
+                or_(
+                    PersistentTask.heartbeat_at.is_(None),
+                    PersistentTask.heartbeat_at < threshold_time
+                )
+            )
+        )
+        stale_tasks = (await session.execute(stmt)).scalars().all()
+        recovered_count = 0
+
+        for task in stale_tasks:
+            task.retry_count += 1
+            task.updated_at = now
+            if task.retry_count >= task.max_retries:
+                task.status = "dead_letter"
+                task.error_message = f"Worker lease expired (stale task recovery after {stale_threshold_seconds}s)"
+                task.completed_at = now
+            else:
+                delay_sec = int(task.backoff_multiplier ** task.retry_count)
+                task.next_retry_at = now + timedelta(seconds=delay_sec)
+                task.status = "pending"
+                task.error_message = f"Worker lease expired. Rescheduled retry #{task.retry_count} in {delay_sec}s."
+            
+            log = TaskExecutionLog(
+                task_id=task.id,
+                attempt_number=task.retry_count,
+                status="failed",
+                duration_ms=0,
+                error_message=task.error_message,
+                details={"reason": "stale_worker_recovery"}
+            )
+            session.add(log)
+            recovered_count += 1
+
+        if recovered_count > 0:
+            await session.commit()
+            logger.warning(f"Recovered {recovered_count} stale tasks abandoned by inactive workers.")
+        return recovered_count
+
+    async def execute_task_by_id(self, task_id: str, session: AsyncSession, already_claimed: bool = False) -> bool:
         """
         Executes a single specified task by ID, updating status, execution history,
         and handling retries / exponential backoff / dead-letter transitions.
         """
         now = datetime.now(timezone.utc)
+        if not already_claimed:
+            claimed = await self.claim_task_atomically(session, task_id)
+            if not claimed:
+                return False
+
         stmt = select(PersistentTask).where(PersistentTask.id == task_id)
         task = (await session.execute(stmt)).scalar_one_or_none()
-        if not task or task.status in ("completed", "cancelled", "dead_letter"):
+        if not task:
             return False
-
-        task.status = "running"
-        task.worker_id = self.worker_id
-        task.started_at = now
-        task.heartbeat_at = now
-        task.updated_at = now
-        await session.commit()
 
         start_time = time.perf_counter()
         attempt_number = task.retry_count + 1
@@ -208,7 +281,7 @@ class PersistentTaskScheduler:
             return False
 
     async def poll_and_execute_next(self) -> bool:
-        """Polls database for the next runnable task and executes it."""
+        """Polls database for the next runnable task and executes it atomically."""
         if self.is_paused:
             return False
 
@@ -216,8 +289,10 @@ class PersistentTaskScheduler:
         self.last_heartbeat = now
 
         async with AsyncSessionLocal() as session:
-            # Query next eligible task:
-            # 1. status == 'pending' and scheduled_at <= now and (next_retry_at is null or next_retry_at <= now)
+            # 1. Recover stale tasks if any
+            await self.recover_stale_tasks(session)
+
+            # 2. Query next eligible task
             stmt = select(PersistentTask.id).where(
                 and_(
                     PersistentTask.status == "pending",
@@ -233,7 +308,12 @@ class PersistentTaskScheduler:
             if not task_id:
                 return False
 
-            return await self.execute_task_by_id(task_id, session)
+            # 3. Atomically claim task
+            claimed = await self.claim_task_atomically(session, task_id)
+            if not claimed:
+                return False
+
+            return await self.execute_task_by_id(task_id, session, already_claimed=True)
 
     async def _worker_loop(self):
         logger.info(f"Persistent worker [{self.worker_id}] polling loop started.")
@@ -256,9 +336,8 @@ class PersistentTaskScheduler:
                 loop = asyncio.get_running_loop()
                 self._polling_task = loop.create_task(self._worker_loop())
             except RuntimeError:
-                # No running event loop yet (will be started with lifespan)
                 pass
-            logger.info("Persistent Task Scheduler started.")
+            logger.info(f"Persistent Task Scheduler started [{self.worker_id}].")
 
     def shutdown(self):
         """Clean shutdown of worker loop."""

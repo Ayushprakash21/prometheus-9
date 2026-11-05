@@ -19,7 +19,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    return settings.SYNC_DATABASE_URL
+    return config.get_main_option("sqlalchemy.url") or settings.SYNC_DATABASE_URL
 
 def run_migrations_offline() -> None:
     url = get_url()

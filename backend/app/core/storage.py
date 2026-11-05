@@ -44,6 +44,18 @@ def _is_svg(b: bytes) -> bool:
     # Reject binary content masquerading as SVG
     if b"\x00" in b[:1024]:
         return False
+    try:
+        content_lower = b.decode("utf-8", errors="ignore").lower()
+    except Exception:
+        return False
+    # Reject active scripts and execution vectors in SVG (Stored XSS mitigation)
+    dangerous_patterns = [
+        "<script", "javascript:", "onload=", "onerror=", "onclick=",
+        "onmouseover=", "onfocus=", "<iframe", "<object", "<embed"
+    ]
+    for pattern in dangerous_patterns:
+        if pattern in content_lower:
+            return False
     return True
 
 ALLOWED_FORMATS = {
