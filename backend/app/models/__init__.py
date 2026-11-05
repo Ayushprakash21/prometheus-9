@@ -44,6 +44,10 @@ from app.models.agent import (
     QualityReport,
     ComplianceReport
 )
+from app.models.task import (
+    PersistentTask,
+    TaskExecutionLog
+)
 
 __all__ = [
     "Base",
@@ -79,5 +83,7 @@ __all__ = [
     "AgentTask",
     "AgentMemory",
     "QualityReport",
-    "ComplianceReport"
+    "ComplianceReport",
+    "PersistentTask",
+    "TaskExecutionLog"
 ]

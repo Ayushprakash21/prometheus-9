@@ -11,32 +11,79 @@
   }
 
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #202221;
     color: #EEE8DE;
+    overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Manrope', sans-serif;
+  .font-editorial {
+    font-family: 'Bodoni Moda', Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-expressive {
+    font-family: 'Cormorant Garamond', Garamond, Georgia, serif;
+    letter-spacing: 0.03em;
+  }
+
+  .font-interface {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .font-mono-metrics {
     font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: -0.01em;
   }
+}
+
+/* Charcoal & Copper Luxury Accents */
+.border-copper-subtle {
+  border-color: rgba(161, 108, 80, 0.22);
+}
+
+.bg-obsidian-gradient {
+  background: radial-gradient(circle at 50% 30%, #292d2b 0%, #202221 70%, #171817 100%);
+}
+
+.copper-glow {
+  box-shadow: 0 0 35px -5px rgba(161, 108, 80, 0.28);
+}
+
+.copper-glow-sm {
+  box-shadow: 0 0 15px -2px rgba(161, 108, 80, 0.2);
+}
+
+/* Subtle cinematic starfield / celestial grain */
+.cosmic-grid {
+  background-size: 60px 60px;
+  background-image: 
+    linear-gradient(to right, rgba(65, 69, 66, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(65, 69, 66, 0.12) 1px, transparent 1px);
 }
 
 /* Custom scrollbar for Charcoal & Copper */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #202221;
+  background: #171817;
 }
 ::-webkit-scrollbar-thumb {
   background: #414542;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #A16C50;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
