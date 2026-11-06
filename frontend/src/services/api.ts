@@ -77,7 +77,16 @@ export async function createProduct(payload: {
   tagline?: string;
   description?: string;
   website_url?: string;
+  logo_url?: string;
   primary_objective?: string;
+  target_market?: string;
+  target_audience?: string;
+  usp?: string;
+  keywords?: string[];
+  launch_date?: string;
+  additional_info?: Record<string, any>;
+  status?: string;
+  features?: { name: string; description: string; benefit_statement?: string; is_verified?: boolean }[];
 }): Promise<Product> {
   const res = await fetch(`${API_BASE}/products`, {
     method: "POST",
@@ -97,7 +106,51 @@ export async function updateProduct(id: string, payload: Partial<Product>): Prom
     headers: getHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Failed to update product: HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update product: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteProduct(id: string, soft: boolean = true): Promise<{ status: string; deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/products/${id}?soft=${soft}`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to delete product: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function duplicateProduct(id: string): Promise<Product> {
+  const res = await fetch(`${API_BASE}/products/${id}/duplicate`, {
+    method: "POST",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to duplicate product: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateProductStatus(id: string, status: string, isActive?: boolean): Promise<Product> {
+  const payload: { status: string; is_active?: boolean } = { status };
+  if (isActive !== undefined) {
+    payload.is_active = isActive;
+  }
+  const res = await fetch(`${API_BASE}/products/${id}/status`, {
+    method: "PATCH",
+    headers: getHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update status: HTTP ${res.status}`);
+  }
   return res.json();
 }
 
@@ -117,7 +170,10 @@ export async function updateBrandProfile(productId: string, payload: Partial<Bra
     headers: getHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Failed to update brand profile: HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update brand profile: HTTP ${res.status}`);
+  }
   return res.json();
 }
 
@@ -135,6 +191,11 @@ export async function createFeature(productId: string, payload: {
   name: string;
   description: string;
   benefit_statement?: string;
+  category?: string;
+  supporting_evidence?: string;
+  evidence_url?: string;
+  verification_status?: string;
+  notes?: string;
   is_verified?: boolean;
 }): Promise<ProductFeature> {
   const res = await fetch(`${API_BASE}/products/${productId}/features`, {
@@ -142,8 +203,35 @@ export async function createFeature(productId: string, payload: {
     headers: getHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Failed to create feature: HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to create feature: HTTP ${res.status}`);
+  }
   return res.json();
+}
+
+export async function updateFeature(productId: string, featureId: string, payload: Partial<ProductFeature>): Promise<ProductFeature> {
+  const res = await fetch(`${API_BASE}/products/${productId}/features/${featureId}`, {
+    method: "PATCH",
+    headers: getHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update feature: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteFeature(productId: string, featureId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/products/${productId}/features/${featureId}`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to delete feature: HTTP ${res.status}`);
+  }
 }
 
 // --- Nested Sources ---
@@ -162,14 +250,42 @@ export async function createSource(productId: string, payload: {
   source_url?: string;
   content_snippet?: string;
   is_primary?: boolean;
+  is_verified?: boolean;
 }): Promise<ProductSource> {
   const res = await fetch(`${API_BASE}/products/${productId}/sources`, {
     method: "POST",
     headers: getHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Failed to add source: HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to add source: HTTP ${res.status}`);
+  }
   return res.json();
+}
+
+export async function updateSource(productId: string, sourceId: string, payload: Partial<ProductSource>): Promise<ProductSource> {
+  const res = await fetch(`${API_BASE}/products/${productId}/sources/${sourceId}`, {
+    method: "PATCH",
+    headers: getHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update source: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteSource(productId: string, sourceId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/products/${productId}/sources/${sourceId}`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to delete source: HTTP ${res.status}`);
+  }
 }
 
 // --- Nested Audience Personas ---
@@ -185,17 +301,56 @@ export async function fetchAudiences(productId: string): Promise<AudiencePersona
 export async function createAudience(productId: string, payload: {
   name: string;
   description: string;
+  age_range?: string;
+  gender?: string;
+  location?: string;
+  occupation?: string;
+  income_level?: string;
+  interests?: string[];
   pain_points?: string[];
+  needs?: string[];
   aspirations?: string[];
+  buying_behavior?: string;
+  preferred_platforms?: string[];
   channels?: string[];
+  motivations?: string[];
+  objections?: string[];
+  content_preferences?: string[];
 }): Promise<AudiencePersona> {
   const res = await fetch(`${API_BASE}/products/${productId}/audiences`, {
     method: "POST",
     headers: getHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Failed to create audience: HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to create audience: HTTP ${res.status}`);
+  }
   return res.json();
+}
+
+export async function updateAudience(productId: string, audienceId: string, payload: Partial<AudiencePersona>): Promise<AudiencePersona> {
+  const res = await fetch(`${API_BASE}/products/${productId}/audiences/${audienceId}`, {
+    method: "PATCH",
+    headers: getHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to update audience: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteAudience(productId: string, audienceId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/products/${productId}/audiences/${audienceId}`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || `Failed to delete audience: HTTP ${res.status}`);
+  }
 }
 
 // --- Campaigns & Content ---

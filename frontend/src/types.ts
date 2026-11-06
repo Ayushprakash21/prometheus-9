@@ -45,6 +45,8 @@ export type NavTab =
   | 'audit_logs'
   | 'system_monitoring';
 
+export type ThemeMode = 'dark' | 'light';
+
 export interface Product {
   id: string;
   organization_id: string;
@@ -54,7 +56,15 @@ export interface Product {
   tagline: string | null;
   description: string | null;
   website_url: string | null;
+  logo_url?: string | null;
   primary_objective: string;
+  target_market?: string | null;
+  target_audience?: string | null;
+  usp?: string | null;
+  keywords?: string[] | null;
+  launch_date?: string | null;
+  additional_info?: Record<string, any> | null;
+  status?: string; // 'active' | 'inactive' | 'draft'
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -71,6 +81,12 @@ export interface ProductFeature {
   name: string;
   description: string;
   benefit_statement: string | null;
+  category?: string | null;
+  supporting_evidence?: string | null;
+  evidence_url?: string | null;
+  verification_status?: 'verified' | 'pending' | 'rejected' | string;
+  verification_date?: string | null;
+  notes?: string | null;
   is_verified: boolean;
   created_at: string;
 }
@@ -83,18 +99,34 @@ export interface ProductSource {
   title: string;
   content_snippet?: string | null;
   is_primary: boolean;
+  is_verified?: boolean;
   created_at: string;
 }
 
 export interface BrandProfile {
   id: string;
+  product_id?: string;
+  brand_name?: string | null;
+  description?: string | null;
+  industry?: string | null;
+  website_url?: string | null;
+  logo_url?: string | null;
+  mission_statement?: string | null;
+  vision_statement?: string | null;
+  values?: string[];
+  personality_traits?: string[];
   tone_of_voice: string;
+  writing_style?: string | null;
+  preferred_vocabulary?: string[];
+  words_to_avoid?: string[];
+  style_guidelines?: string | null;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
+  typography?: { heading?: string; body?: string };
+  target_market_summary?: string | null;
   do_not_mention_claims: string[];
   mandatory_disclaimers: string[];
-  mission_statement?: string | null;
   positioning_statement?: string | null;
 }
 
@@ -103,9 +135,21 @@ export interface AudiencePersona {
   product_id: string;
   name: string;
   description: string;
+  age_range?: string | null;
+  gender?: string | null;
+  location?: string | null;
+  occupation?: string | null;
+  income_level?: string | null;
+  interests?: string[];
   pain_points: string[];
-  aspirations: string[];
-  channels: string[];
+  needs?: string[];
+  aspirations?: string[];
+  buying_behavior?: string | null;
+  preferred_platforms?: string[];
+  channels?: string[];
+  motivations?: string[];
+  objections?: string[];
+  content_preferences?: string[];
   created_at: string;
 }
 

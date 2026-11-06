@@ -1,4 +1,7 @@
 from typing import List, Optional, Tuple, Dict, Any
+import re
+import uuid
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.repositories.product import ProductRepository
@@ -7,23 +10,57 @@ from app.models.organization import (
 )
 from app.schemas.product import (
     ProductCreate, ProductUpdate, ProductOut, ProductDetailOut,
-    ProductFeatureCreate, ProductSourceCreate, BrandProfileUpdate, AudiencePersonaCreate
+    ProductFeatureCreate, ProductFeatureUpdate, ProductFeatureOut,
+    ProductSourceCreate, ProductSourceUpdate, ProductSourceOut,
+    BrandProfileUpdate, BrandProfileOut,
+    AudiencePersonaCreate, AudiencePersonaUpdate, AudiencePersonaOut
 )
 from app.core.exceptions import NotFoundException, ConflictException, ForbiddenException
 from app.services.audit import record_audit_event
+
+def slugify(text: str) -> str:
+    text = re.sub(r"[^\w\s-]", "", text.lower()).strip()
+    return re.sub(r"[-\s]+", "-", text) or "product"
 
 class ProductService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = ProductRepository(db)
 
+    def _to_product_out(self, p: Product, feats: int = 0, srcs: int = 0, camps: int = 0) -> ProductOut:
+        return ProductOut(
+            id=p.id,
+            organization_id=p.organization_id,
+            name=p.name,
+            slug=p.slug,
+            category=p.category,
+            tagline=p.tagline,
+            description=p.description,
+            website_url=p.website_url,
+            logo_url=p.logo_url,
+            primary_objective=p.primary_objective,
+            status=p.status,
+            is_active=p.is_active,
+            target_market=p.target_market,
+            target_audience=p.target_audience,
+            usp=p.usp,
+            keywords=p.keywords or [],
+            launch_date=p.launch_date,
+            additional_info=p.additional_info,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            features_count=feats,
+            sources_count=srcs,
+            campaigns_count=camps
+        )
+
     async def list_products(
         self,
         organization_id: str,
-        status: Optional[str] = "active",
+        status: Optional[str] = None,
         category: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 50
     ) -> Tuple[List[ProductOut], int]:
         products, total = await self.repo.list_products(
             organization_id=organization_id,
@@ -36,24 +73,7 @@ class ProductService:
         out_list = []
         for p in products:
             feats, srcs, camps = await self.repo.get_counts(p.id)
-            out_list.append(ProductOut(
-                id=p.id,
-                organization_id=p.organization_id,
-                name=p.name,
-                slug=p.slug,
-                category=p.category,
-                tagline=p.tagline,
-                description=p.description,
-                website_url=p.website_url,
-                primary_objective=p.primary_objective,
-                status=p.status,
-                is_active=p.is_active,
-                created_at=p.created_at,
-                updated_at=p.updated_at,
-                features_count=feats,
-                sources_count=srcs,
-                campaigns_count=camps
-            ))
+            out_list.append(self._to_product_out(p, feats, srcs, camps))
         return out_list, total
 
     async def get_product(self, organization_id: str, identifier: str) -> ProductDetailOut:
@@ -71,9 +91,16 @@ class ProductService:
             tagline=prod.tagline,
             description=prod.description,
             website_url=prod.website_url,
+            logo_url=prod.logo_url,
             primary_objective=prod.primary_objective,
             status=prod.status,
             is_active=prod.is_active,
+            target_market=prod.target_market,
+            target_audience=prod.target_audience,
+            usp=prod.usp,
+            keywords=prod.keywords or [],
+            launch_date=prod.launch_date,
+            additional_info=prod.additional_info,
             created_at=prod.created_at,
             updated_at=prod.updated_at,
             features_count=feats,
@@ -92,34 +119,71 @@ class ProductService:
         payload: ProductCreate,
         ip_address: Optional[str] = None
     ) -> ProductOut:
-        existing = await self.repo.get_by_slug(organization_id, payload.slug)
-        if existing:
-            raise ConflictException(f"Product with slug '{payload.slug}' already exists in this organization.")
+        if payload.slug:
+            existing = await self.repo.get_by_slug(organization_id, payload.slug)
+            if existing:
+                raise ConflictException(f"Product with slug '{payload.slug}' already exists in this organization.")
+            candidate_slug = payload.slug
+        else:
+            base_slug = slugify(payload.name)
+            candidate_slug = base_slug
+            existing = await self.repo.get_by_slug(organization_id, candidate_slug)
+            if existing:
+                candidate_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
 
         prod = Product(
             organization_id=organization_id,
             name=payload.name,
-            slug=payload.slug,
+            slug=candidate_slug,
             category=payload.category,
             tagline=payload.tagline,
             description=payload.description,
             website_url=payload.website_url,
-            primary_objective=payload.primary_objective,
-            status="active",
-            is_active=payload.is_active
+            logo_url=payload.logo_url,
+            primary_objective=payload.primary_objective or "autonomous_growth",
+            status=payload.status or "active",
+            is_active=payload.is_active,
+            target_market=payload.target_market,
+            target_audience=payload.target_audience,
+            usp=payload.usp,
+            keywords=payload.keywords or [],
+            launch_date=payload.launch_date,
+            additional_info=payload.additional_info
         )
         created = await self.repo.create(prod)
 
-        # Automatically create default brand profile
+        # Create default brand profile
         brand = BrandProfile(
             organization_id=organization_id,
             product_id=created.id,
+            brand_name=created.name,
+            brand_description=created.description,
+            industry=created.category,
+            website_url=created.website_url,
+            logo_url=created.logo_url,
             tone_of_voice="Professional, Authoritative, Innovative",
-            primary_color="#A16C50",
-            secondary_color="#202221",
-            accent_color="#C9B49B"
+            primary_color="#C9B49B",
+            secondary_color="#292B29",
+            accent_color="#E9DFD2"
         )
         self.db.add(brand)
+
+        # If features were passed, create them as ProductFeature items
+        if payload.features:
+            for feat_name in payload.features:
+                if feat_name and feat_name.strip():
+                    f_item = ProductFeature(
+                        organization_id=organization_id,
+                        product_id=created.id,
+                        name=feat_name.strip(),
+                        description=f"Core capability of {created.name}",
+                        category="Core Capability",
+                        is_verified=True,
+                        verification_status="verified",
+                        verification_date=datetime.now(timezone.utc)
+                    )
+                    self.db.add(f_item)
+
         await self.db.commit()
 
         await record_audit_event(
@@ -135,24 +199,8 @@ class ProductService:
             ip_address=ip_address
         )
 
-        return ProductOut(
-            id=created.id,
-            organization_id=created.organization_id,
-            name=created.name,
-            slug=created.slug,
-            category=created.category,
-            tagline=created.tagline,
-            description=created.description,
-            website_url=created.website_url,
-            primary_objective=created.primary_objective,
-            status=created.status,
-            is_active=created.is_active,
-            created_at=created.created_at,
-            updated_at=created.updated_at,
-            features_count=0,
-            sources_count=0,
-            campaigns_count=0
-        )
+        feats, srcs, camps = await self.repo.get_counts(created.id)
+        return self._to_product_out(created, feats, srcs, camps)
 
     async def update_product(
         self,
@@ -186,24 +234,165 @@ class ProductService:
         )
 
         feats, srcs, camps = await self.repo.get_counts(updated.id)
-        return ProductOut(
-            id=updated.id,
-            organization_id=updated.organization_id,
-            name=updated.name,
-            slug=updated.slug,
-            category=updated.category,
-            tagline=updated.tagline,
-            description=updated.description,
-            website_url=updated.website_url,
-            primary_objective=updated.primary_objective,
-            status=updated.status,
-            is_active=updated.is_active,
-            created_at=updated.created_at,
-            updated_at=updated.updated_at,
-            features_count=feats,
-            sources_count=srcs,
-            campaigns_count=camps
+        return self._to_product_out(updated, feats, srcs, camps)
+
+    async def duplicate_product(
+        self,
+        organization_id: str,
+        product_id: str,
+        actor_id: str,
+        ip_address: Optional[str] = None
+    ) -> ProductOut:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_id, include_details=True)
+        if not prod:
+            raise NotFoundException("Product", product_id)
+
+        copy_name = f"{prod.name} (Copy)"
+        copy_slug = f"{slugify(copy_name)}-{uuid.uuid4().hex[:6]}"
+
+        new_prod = Product(
+            organization_id=organization_id,
+            name=copy_name,
+            slug=copy_slug,
+            category=prod.category,
+            tagline=prod.tagline,
+            description=prod.description,
+            website_url=prod.website_url,
+            logo_url=prod.logo_url,
+            primary_objective=prod.primary_objective,
+            status="draft",
+            is_active=True,
+            target_market=prod.target_market,
+            target_audience=prod.target_audience,
+            usp=prod.usp,
+            keywords=prod.keywords or [],
+            launch_date=prod.launch_date,
+            additional_info=prod.additional_info
         )
+        created = await self.repo.create(new_prod)
+
+        # Duplicate brand profile
+        if prod.brand_profile:
+            bp = prod.brand_profile
+            new_bp = BrandProfile(
+                organization_id=organization_id,
+                product_id=created.id,
+                brand_name=copy_name,
+                brand_description=bp.brand_description,
+                industry=bp.industry,
+                website_url=bp.website_url,
+                logo_url=bp.logo_url,
+                mission=bp.mission,
+                vision=bp.vision,
+                values=bp.values or [],
+                personality=bp.personality,
+                tone_of_voice=bp.tone_of_voice,
+                writing_style=bp.writing_style,
+                preferred_vocabulary=bp.preferred_vocabulary or [],
+                words_to_avoid=bp.words_to_avoid or [],
+                brand_guidelines=bp.brand_guidelines,
+                typography=bp.typography or {},
+                target_market=bp.target_market,
+                primary_color=bp.primary_color,
+                secondary_color=bp.secondary_color,
+                accent_color=bp.accent_color,
+                do_not_mention_claims=bp.do_not_mention_claims or [],
+                mandatory_disclaimers=bp.mandatory_disclaimers or []
+            )
+            self.db.add(new_bp)
+
+        # Duplicate features
+        for f in prod.features:
+            new_f = ProductFeature(
+                organization_id=organization_id,
+                product_id=created.id,
+                name=f.name,
+                description=f.description,
+                benefit_statement=f.benefit_statement,
+                category=f.category,
+                supporting_evidence=f.supporting_evidence,
+                evidence_url=f.evidence_url,
+                is_verified=f.is_verified,
+                verification_status=f.verification_status,
+                verification_date=f.verification_date,
+                notes=f.notes
+            )
+            self.db.add(new_f)
+
+        # Duplicate audiences
+        for a in prod.audiences:
+            new_a = AudiencePersona(
+                organization_id=organization_id,
+                product_id=created.id,
+                title=a.title,
+                role_description=a.role_description,
+                age_range=a.age_range,
+                gender=a.gender,
+                location=a.location,
+                occupation=a.occupation,
+                income_range=a.income_range,
+                interests=a.interests or [],
+                pain_points=a.pain_points or [],
+                desired_outcomes=a.desired_outcomes or [],
+                needs=a.needs or [],
+                buying_behaviour=a.buying_behaviour,
+                preferred_channels=a.preferred_channels or [],
+                motivations=a.motivations or [],
+                objections=a.objections or [],
+                content_preferences=a.content_preferences or []
+            )
+            self.db.add(new_a)
+
+        await self.db.commit()
+
+        await record_audit_event(
+            db=self.db,
+            actor_id=actor_id,
+            actor_type="user",
+            action="PRODUCT_DUPLICATED",
+            resource_type="product",
+            resource_id=created.id,
+            product_id=created.id,
+            organization_id=organization_id,
+            details={"original_id": product_id, "new_name": copy_name},
+            ip_address=ip_address
+        )
+
+        feats, srcs, camps = await self.repo.get_counts(created.id)
+        return self._to_product_out(created, feats, srcs, camps)
+
+    async def delete_product(
+        self,
+        organization_id: str,
+        product_id: str,
+        actor_id: str,
+        soft: bool = True,
+        ip_address: Optional[str] = None
+    ) -> bool:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_id, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_id)
+
+        if soft:
+            prod.status = "archived"
+            prod.is_active = False
+            await self.repo.update(prod)
+        else:
+            await self.repo.delete(organization_id, prod.id)
+
+        await record_audit_event(
+            db=self.db,
+            actor_id=actor_id,
+            actor_type="user",
+            action="PRODUCT_DELETED" if not soft else "PRODUCT_ARCHIVED",
+            resource_type="product",
+            resource_id=prod.id,
+            product_id=prod.id,
+            organization_id=organization_id,
+            details={"name": prod.name, "soft_deleted": soft},
+            ip_address=ip_address
+        )
+        return True
 
     async def archive_product(
         self,
@@ -212,8 +401,8 @@ class ProductService:
         actor_id: str,
         ip_address: Optional[str] = None
     ) -> ProductOut:
-        archived = await self.repo.archive(organization_id, identifier)
-        if not archived:
+        prod = await self.repo.archive(organization_id, identifier)
+        if not prod:
             raise NotFoundException("Product", identifier)
 
         await record_audit_event(
@@ -222,32 +411,14 @@ class ProductService:
             actor_type="user",
             action="PRODUCT_ARCHIVED",
             resource_type="product",
-            resource_id=archived.id,
-            product_id=archived.id,
+            resource_id=prod.id,
+            product_id=prod.id,
             organization_id=organization_id,
-            details={"previous_status": "active", "new_status": "archived"},
+            details={"status": "archived"},
             ip_address=ip_address
         )
-
-        feats, srcs, camps = await self.repo.get_counts(archived.id)
-        return ProductOut(
-            id=archived.id,
-            organization_id=archived.organization_id,
-            name=archived.name,
-            slug=archived.slug,
-            category=archived.category,
-            tagline=archived.tagline,
-            description=archived.description,
-            website_url=archived.website_url,
-            primary_objective=archived.primary_objective,
-            status=archived.status,
-            is_active=archived.is_active,
-            created_at=archived.created_at,
-            updated_at=archived.updated_at,
-            features_count=feats,
-            sources_count=srcs,
-            campaigns_count=camps
-        )
+        feats, srcs, camps = await self.repo.get_counts(prod.id)
+        return self._to_product_out(prod, feats, srcs, camps)
 
     # --- Nested Feature Management ---
     async def add_feature(
@@ -267,8 +438,14 @@ class ProductService:
             name=payload.name,
             description=payload.description,
             benefit_statement=payload.benefit_statement,
+            category=payload.category or "Core Capability",
+            supporting_evidence=payload.supporting_evidence,
+            evidence_url=payload.evidence_url,
             evidence_source_id=payload.evidence_source_id,
-            is_verified=payload.is_verified
+            is_verified=payload.is_verified,
+            verification_status=payload.verification_status or "verified",
+            verification_date=payload.verification_date or (datetime.now(timezone.utc) if payload.is_verified else None),
+            notes=payload.notes
         )
         self.db.add(feat)
         await self.db.commit()
@@ -286,6 +463,50 @@ class ProductService:
             details={"feature_name": feat.name}
         )
         return feat
+
+    async def update_feature(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        feature_id: str,
+        actor_id: str,
+        payload: ProductFeatureUpdate
+    ) -> ProductFeature:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        feat = await self.repo.get_feature(feature_id, prod.id)
+        if not feat:
+            raise NotFoundException("ProductFeature", feature_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(feat, k, v)
+
+        if "is_verified" in update_data:
+            if update_data["is_verified"] and not feat.verification_date:
+                feat.verification_date = datetime.now(timezone.utc)
+
+        await self.db.commit()
+        await self.db.refresh(feat)
+        return feat
+
+    async def delete_feature(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        feature_id: str,
+        actor_id: str
+    ) -> bool:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        success = await self.repo.delete_feature(feature_id, prod.id)
+        if not success:
+            raise NotFoundException("ProductFeature", feature_id)
+        return True
 
     async def list_features(self, organization_id: str, product_identifier: str) -> List[ProductFeature]:
         prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=True)
@@ -319,6 +540,46 @@ class ProductService:
         await self.db.refresh(src)
         return src
 
+    async def update_source(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        source_id: str,
+        actor_id: str,
+        payload: ProductSourceUpdate
+    ) -> ProductSource:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        src = await self.repo.get_source(source_id, prod.id)
+        if not src:
+            raise NotFoundException("ProductSource", source_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(src, k, v)
+
+        await self.db.commit()
+        await self.db.refresh(src)
+        return src
+
+    async def delete_source(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        source_id: str,
+        actor_id: str
+    ) -> bool:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        success = await self.repo.delete_source(source_id, prod.id)
+        if not success:
+            raise NotFoundException("ProductSource", source_id)
+        return True
+
     async def list_sources(self, organization_id: str, product_identifier: str) -> List[ProductSource]:
         prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=True)
         if not prod:
@@ -331,14 +592,18 @@ class ProductService:
         if not prod:
             raise NotFoundException("Product", product_identifier)
         if not prod.brand_profile:
-            # Create default if missing
             brand = BrandProfile(
                 organization_id=organization_id,
                 product_id=prod.id,
+                brand_name=prod.name,
+                brand_description=prod.description,
+                industry=prod.category,
+                website_url=prod.website_url,
+                logo_url=prod.logo_url,
                 tone_of_voice="Professional, Authoritative, Innovative",
-                primary_color="#A16C50",
-                secondary_color="#202221",
-                accent_color="#C9B49B"
+                primary_color="#C9B49B",
+                secondary_color="#292B29",
+                accent_color="#E9DFD2"
             )
             self.db.add(brand)
             await self.db.commit()
@@ -388,14 +653,65 @@ class ProductService:
             product_id=prod.id,
             title=payload.title,
             role_description=payload.role_description,
-            pain_points=payload.pain_points,
-            desired_outcomes=payload.desired_outcomes,
-            preferred_channels=payload.preferred_channels
+            age_range=payload.age_range,
+            gender=payload.gender,
+            location=payload.location,
+            occupation=payload.occupation,
+            income_range=payload.income_range,
+            interests=payload.interests or [],
+            pain_points=payload.pain_points or [],
+            desired_outcomes=payload.desired_outcomes or [],
+            needs=payload.needs or [],
+            buying_behaviour=payload.buying_behaviour,
+            preferred_channels=payload.preferred_channels or [],
+            motivations=payload.motivations or [],
+            objections=payload.objections or [],
+            content_preferences=payload.content_preferences or []
         )
         self.db.add(aud)
         await self.db.commit()
         await self.db.refresh(aud)
         return aud
+
+    async def update_audience(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        audience_id: str,
+        actor_id: str,
+        payload: AudiencePersonaUpdate
+    ) -> AudiencePersona:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        aud = await self.repo.get_audience(audience_id, prod.id)
+        if not aud:
+            raise NotFoundException("AudiencePersona", audience_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(aud, k, v)
+
+        await self.db.commit()
+        await self.db.refresh(aud)
+        return aud
+
+    async def delete_audience(
+        self,
+        organization_id: str,
+        product_identifier: str,
+        audience_id: str,
+        actor_id: str
+    ) -> bool:
+        prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=False)
+        if not prod:
+            raise NotFoundException("Product", product_identifier)
+
+        success = await self.repo.delete_audience(audience_id, prod.id)
+        if not success:
+            raise NotFoundException("AudiencePersona", audience_id)
+        return True
 
     async def list_audiences(self, organization_id: str, product_identifier: str) -> List[AudiencePersona]:
         prod = await self.repo.get_by_id_or_slug(organization_id, product_identifier, include_details=True)

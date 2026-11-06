@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update, and_
+from sqlalchemy import select, func, update, and_, delete
 from sqlalchemy.orm import selectinload
 from app.models.organization import (
     Product, ProductFeature, ProductSource, BrandProfile, AudiencePersona
@@ -17,12 +17,12 @@ class ProductRepository:
         status: Optional[str] = "active",
         category: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 50
     ) -> Tuple[List[Product], int]:
         filters = [Product.organization_id == organization_id]
-        if status:
+        if status and status != "all":
             filters.append(Product.status == status)
-        if category:
+        if category and category != "all":
             filters.append(Product.category == category)
 
         # Count total matching
@@ -96,6 +96,14 @@ class ProductRepository:
         await self.db.refresh(prod)
         return prod
 
+    async def delete(self, organization_id: str, product_id: str) -> bool:
+        prod = await self.get_by_id_or_slug(organization_id, product_id, include_details=False)
+        if not prod:
+            return False
+        await self.db.delete(prod)
+        await self.db.commit()
+        return True
+
     async def get_counts(self, product_id: str) -> Tuple[int, int, int]:
         feat_res = await self.db.execute(
             select(func.count(ProductFeature.id)).where(ProductFeature.product_id == product_id)
@@ -107,3 +115,49 @@ class ProductRepository:
             select(func.count(Campaign.id)).where(Campaign.product_id == product_id)
         )
         return (feat_res.scalar() or 0, src_res.scalar() or 0, camp_res.scalar() or 0)
+
+    # --- Nested Entity Lookups & Deletions ---
+    async def get_feature(self, feature_id: str, product_id: str) -> Optional[ProductFeature]:
+        stmt = select(ProductFeature).where(
+            and_(ProductFeature.id == feature_id, ProductFeature.product_id == product_id)
+        )
+        res = await self.db.execute(stmt)
+        return res.scalar_one_or_none()
+
+    async def delete_feature(self, feature_id: str, product_id: str) -> bool:
+        feat = await self.get_feature(feature_id, product_id)
+        if not feat:
+            return False
+        await self.db.delete(feat)
+        await self.db.commit()
+        return True
+
+    async def get_audience(self, audience_id: str, product_id: str) -> Optional[AudiencePersona]:
+        stmt = select(AudiencePersona).where(
+            and_(AudiencePersona.id == audience_id, AudiencePersona.product_id == product_id)
+        )
+        res = await self.db.execute(stmt)
+        return res.scalar_one_or_none()
+
+    async def delete_audience(self, audience_id: str, product_id: str) -> bool:
+        aud = await self.get_audience(audience_id, product_id)
+        if not aud:
+            return False
+        await self.db.delete(aud)
+        await self.db.commit()
+        return True
+
+    async def get_source(self, source_id: str, product_id: str) -> Optional[ProductSource]:
+        stmt = select(ProductSource).where(
+            and_(ProductSource.id == source_id, ProductSource.product_id == product_id)
+        )
+        res = await self.db.execute(stmt)
+        return res.scalar_one_or_none()
+
+    async def delete_source(self, source_id: str, product_id: str) -> bool:
+        src = await self.get_source(source_id, product_id)
+        if not src:
+            return False
+        await self.db.delete(src)
+        await self.db.commit()
+        return True

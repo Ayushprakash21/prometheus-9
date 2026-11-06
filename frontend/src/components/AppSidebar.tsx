@@ -42,6 +42,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { NavTab } from '../types';
+import { useTheme } from '../context/ThemeContext';
 
 interface AppSidebarProps {
   activeTab: NavTab;
@@ -79,18 +80,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   productCount,
   agentCount,
   campaignCount,
-  pendingApprovalsCount = 2,
+  pendingApprovalsCount = 0,
 }) => {
-  // Collapsible state for each nav section in non-collapsed mode
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
-    dist: false,
-    perf: false,
-  });
+  const { isDark } = useTheme();
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups(prev => ({
       ...prev,
-      [groupId]: !prev[groupId],
+      [groupId]: !prev[groupId]
     }));
   };
 
@@ -99,64 +97,64 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       id: 'cmd',
       group: 'COMMAND',
       items: [
-        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-        { id: 'workspace', label: 'My Workspace', icon: Briefcase },
-        { id: 'activity_centre', label: 'Activity Centre', icon: Activity },
+        { id: 'overview', label: 'Overview & Telemetry', icon: LayoutDashboard },
+        { id: 'workspace', label: 'Founder Workspace', icon: Briefcase },
+        { id: 'activity_centre', label: 'Activity & Audit Centre', icon: Activity },
       ],
     },
     {
       id: 'biz',
-      group: 'BUSINESS MANAGEMENT',
+      group: 'BUSINESS REGISTRY',
       items: [
         { id: 'products', label: 'Products & Services', icon: Layers, badge: productCount },
-        { id: 'brand_profile', label: 'Brand Profile', icon: ShieldCheck },
-        { id: 'audiences', label: 'Audience & Personas', icon: Users },
-        { id: 'marketing_objectives', label: 'Marketing Objectives', icon: Target },
-        { id: 'competitors', label: 'Competitor Intelligence', icon: Compass },
+        { id: 'brand_profile', label: 'Brand Profile & Voice', icon: Sparkles },
+        { id: 'audiences', label: 'Audience Personas', icon: Users },
+        { id: 'marketing_objectives', label: 'Growth Objectives', icon: Target },
+        { id: 'competitors', label: 'Competitive Matrix', icon: Compass },
       ],
     },
     {
       id: 'intel',
-      group: 'MARKETING INTELLIGENCE',
+      group: 'MARKETING INTEL',
       items: [
-        { id: 'market_research', label: 'Market Research', icon: Radar },
-        { id: 'trend_intelligence', label: 'Trend Intelligence', icon: TrendingUp },
-        { id: 'seo_intelligence', label: 'Keyword & SEO Intel', icon: Search },
-        { id: 'strategy', label: 'Marketing Strategy', icon: Zap },
-        { id: 'growth_opportunities', label: 'Growth Opportunities', icon: Lightbulb },
+        { id: 'market_research', label: 'Autonomous Research', icon: Radar },
+        { id: 'trend_intelligence', label: 'Trend & Cultural Shifts', icon: TrendingUp },
+        { id: 'seo_intelligence', label: 'Search Intent & SEO', icon: Search },
+        { id: 'strategy', label: 'Growth Strategy', icon: Zap },
+        { id: 'growth_opportunities', label: 'Arbitrage Opportunities', icon: Lightbulb },
       ],
     },
     {
       id: 'workforce',
       group: 'AI WORKFORCE',
       items: [
-        { id: 'agents', label: 'Agent Directory', icon: Bot, badge: agentCount },
+        { id: 'agents', label: 'Specialist Roster', icon: Bot, badge: agentCount },
         { id: 'agent_config', label: 'Agent Configuration', icon: Sliders },
-        { id: 'agent_history', label: 'Execution History', icon: History },
-        { id: 'automation_rules', label: 'Automation Rules', icon: Cpu },
-        { id: 'autonomy', label: 'Autonomy Control', icon: Lock },
-        { id: 'approval_centre', label: 'Approval Centre', icon: CheckSquare, badge: pendingApprovalsCount },
+        { id: 'agent_history', label: 'Run Execution Logs', icon: History },
+        { id: 'automation_rules', label: 'Autonomous Rules', icon: Cpu },
+        { id: 'autonomy', label: 'Guardrails & Safety', icon: Lock },
+        { id: 'approval_centre', label: 'Human-in-the-Loop', icon: CheckSquare, badge: pendingApprovalsCount },
       ],
     },
     {
-      id: 'creative',
+      id: 'studio',
       group: 'CREATIVE STUDIO',
       items: [
-        { id: 'content_studio', label: 'Content Studio', icon: FileText },
-        { id: 'video_production', label: 'Video Production', icon: Film },
-        { id: 'image_studio', label: 'Image & Design Studio', icon: Palette },
-        { id: 'asset_library', label: 'Creative Asset Library', icon: Upload },
-        { id: 'brand_compliance', label: 'Brand Compliance', icon: AlertCircle },
+        { id: 'content_studio', label: 'Copy & Messaging', icon: FileText },
+        { id: 'video_production', label: 'Automated Video Studio', icon: Film },
+        { id: 'image_studio', label: 'Visual Art Direction', icon: Palette },
+        { id: 'asset_library', label: 'Media Asset Vault', icon: Upload },
+        { id: 'brand_compliance', label: 'Deterministic Guardrails', icon: AlertCircle },
       ],
     },
     {
       id: 'dist',
       group: 'DISTRIBUTION',
       items: [
-        { id: 'social_accounts', label: 'Social Accounts', icon: Share2 },
-        { id: 'publishing_centre', label: 'Social Publishing', icon: Send, badge: campaignCount > 0 ? campaignCount : undefined },
-        { id: 'publishing_calendar', label: 'Publishing Calendar', icon: Calendar },
-        { id: 'publication_history', label: 'Publication History', icon: Clock },
+        { id: 'social_accounts', label: 'Connected Channels', icon: Share2 },
+        { id: 'publishing_centre', label: 'Autonomous Publisher', icon: Send },
+        { id: 'publishing_calendar', label: 'Master Schedule', icon: Calendar },
+        { id: 'publication_history', label: 'Dispatch History', icon: Clock },
       ],
     },
     {
@@ -183,7 +181,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   ];
 
   const renderContent = () => (
-    <div className="flex flex-col h-full bg-[#292C29] border-r border-[#414542] text-[#EEE8DE] select-none">
+    <div className={`flex flex-col h-full select-none transition-colors border-r ${
+      isDark 
+        ? 'bg-[#181A18] border-[#2E332E] text-[#F5F2EB]' 
+        : 'bg-[#FFFFFF] border-[#E3E3DE] text-[#292B29]'
+    }`}>
       {/* Scrollable Navigation Sections */}
       <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 custom-scrollbar">
         {NAV_GROUPS.map((grp) => {
@@ -196,7 +198,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <button
                   onClick={() => toggleGroup(grp.id)}
                   className={`w-full flex items-center justify-between px-2.5 py-1 text-[10px] font-mono-metrics uppercase tracking-wider transition-colors ${
-                    hasActiveChild ? 'text-[#C9B49B] font-semibold' : 'text-[#B8B0A5]/60 hover:text-[#B8B0A5]'
+                    isDark
+                      ? (hasActiveChild ? 'text-[#C9B49B] font-semibold' : 'text-[#8E8A82] hover:text-[#C5BFB5]')
+                      : (hasActiveChild ? 'text-[#8E7656] font-semibold' : 'text-[#898B85] hover:text-[#292B29]')
                   }`}
                 >
                   <span>{grp.group}</span>
@@ -207,7 +211,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   />
                 </button>
               ) : (
-                <div className="h-2 border-b border-[#414542]/40 mb-1" />
+                <div className={`h-2 border-b mb-1 ${isDark ? 'border-[#2E332E]' : 'border-[#E3E3DE]'}`} />
               )}
 
               {(!isGroupCollapsed || collapsed) && grp.items.map((item) => {
@@ -223,20 +227,30 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     title={collapsed ? item.label : undefined}
                     className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#303430] text-[#A16C50] font-semibold border-l-2 border-[#A16C50] shadow-sm'
-                        : 'text-[#B8B0A5] hover:text-[#EEE8DE] hover:bg-[#303430]/40'
+                        ? (isDark 
+                            ? 'bg-[#222622] text-[#C9B49B] font-semibold border-l-2 border-[#C9B49B] shadow-sm'
+                            : 'bg-[#F5F0E9] text-[#292B29] font-bold border-l-2 border-[#8E7656] shadow-sm')
+                        : (isDark
+                            ? 'text-[#C5BFB5] hover:text-[#F5F2EB] hover:bg-[#1E221E]'
+                            : 'text-[#686B67] hover:text-[#292B29] hover:bg-[#F1F1EE]')
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#A16C50]' : 'text-[#B8B0A5]'}`} />
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${
+                        isActive 
+                          ? (isDark ? 'text-[#C9B49B]' : 'text-[#8E7656]') 
+                          : (isDark ? 'text-[#8E8A82]' : 'text-[#898B85]')
+                      }`} />
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
 
                     {!collapsed && item.badge !== undefined && (
                       <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono-metrics border ${
                         item.id === 'approval_centre' && Number(item.badge) > 0
-                          ? 'bg-[#A16C50]/20 text-[#C9B49B] border-[#A16C50]/40'
-                          : 'bg-[#202221] text-[#C9B49B] border-[#414542]'
+                          ? 'bg-rose-950/20 text-rose-400 border-rose-500/40 font-bold'
+                          : isDark
+                          ? 'bg-[#121312] text-[#C9B49B] border-[#2E332E]'
+                          : 'bg-[#F1F1EE] text-[#686B67] border-[#E3E3DE]'
                       }`}>
                         {item.badge}
                       </span>
@@ -250,16 +264,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       </div>
 
       {/* Sidebar Footer with Collapse Toggle */}
-      <div className="p-3 border-t border-[#414542] flex items-center justify-between bg-[#202221]/50">
+      <div className={`p-3 border-t flex items-center justify-between transition-colors ${
+        isDark ? 'border-[#2E332E] bg-[#141614]' : 'border-[#E3E3DE] bg-[#F8F8F6]'
+      }`}>
         {!collapsed && (
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-mono-metrics text-[#B8B0A5]">37 Views Connected</span>
+            <span className={`text-[11px] font-mono-metrics ${isDark ? 'text-[#8E8A82]' : 'text-[#686B67]'}`}>
+              37 Views Connected
+            </span>
           </div>
         )}
         <button
           onClick={onToggleCollapsed}
-          className="p-1.5 rounded-lg text-[#B8B0A5] hover:text-[#EEE8DE] hover:bg-[#303430] transition-colors ml-auto"
+          className={`p-1.5 rounded-lg transition-colors ml-auto ${
+            isDark ? 'text-[#8E8A82] hover:text-[#F5F2EB] hover:bg-[#2E332E]' : 'text-[#686B67] hover:text-[#292B29] hover:bg-[#F1F1EE]'
+          }`}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

@@ -56,8 +56,10 @@ import { WorkspaceView } from "./components/WorkspaceView";
 import { ActivityCentreView } from "./components/ActivityCentreView";
 
 import { AlertCircle, X, Sparkles } from "lucide-react";
+import { useTheme } from "./context/ThemeContext";
 
 export const App: React.FC = () => {
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -237,7 +239,8 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#202221] text-[#EEE8DE] flex flex-col font-sans selection:bg-[#A16C50] selection:text-white">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-[#C9B49B]/30 ${isDark ? "bg-[#111211] text-[#F5F2EB]" : "bg-[#F8F8F6] text-[#292B29]"}`}>
+
       {/* Top Header */}
       <AppHeader
         products={products}
@@ -269,7 +272,7 @@ export const App: React.FC = () => {
         />
 
         {/* Dynamic Main Workspace Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 custom-scrollbar bg-[#202221]">
+        <main className={`flex-1 overflow-y-auto custom-scrollbar transition-colors ${isDark ? "bg-[#111211]" : "bg-[#F8F8F6]"} ${["products", "brand_profile", "audiences", "features", "sources", "marketing_objectives", "competitors"].includes(activeTab) ? "p-0" : "p-4 sm:p-6 lg:p-8 space-y-6"}`}>
           {/* Status Alert if Backend is in Demo/Disconnected State */}
           {connectionError && (
             <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-center justify-between text-xs text-amber-200">
@@ -430,7 +433,8 @@ export const App: React.FC = () => {
       {/* GLOBAL MODAL: ADD PRODUCT */}
       {showGlobalAddProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-[#292C29] border border-[#414542] shadow-2xl space-y-4">
+          <div className={`w-full max-w-lg p-6 rounded-2xl border shadow-2xl space-y-4 ${isDark ? "bg-[#161816] border-[#2E332E] text-[#F5F2EB]" : "bg-[#FFFFFF] border-[#E3E3DE] text-[#292B29]"}`}>
+
             <div className="flex items-center justify-between border-b border-[#414542] pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#A16C50]" />
