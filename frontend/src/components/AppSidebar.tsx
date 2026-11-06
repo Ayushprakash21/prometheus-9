@@ -187,25 +187,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         : 'bg-[#FFFFFF] border-[#E2E1DC] text-[#262724]'
     }`}>
       {/* Scrollable Navigation Sections */}
-      <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-4 custom-scrollbar">
         {NAV_GROUPS.map((grp) => {
           const isGroupCollapsed = !collapsed && collapsedGroups[grp.id];
           const hasActiveChild = grp.items.some(item => item.id === activeTab);
 
           return (
-            <div key={grp.id} className="space-y-0.5">
+            <div key={grp.id} className="space-y-1">
               {!collapsed ? (
                 <button
                   onClick={() => toggleGroup(grp.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1 text-[10px] font-mono-metrics uppercase tracking-wider transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-mono-metrics uppercase tracking-wider transition-colors ${
                     isDark
                       ? (hasActiveChild ? 'text-[#C9B49B] font-semibold' : 'text-[#8E8A82] hover:text-[#C5BFB5]')
-                      : (hasActiveChild ? 'text-[#292B29] font-bold' : 'text-[#898980] hover:text-[#262724]')
+                      : (hasActiveChild ? 'text-[#292B29] font-bold' : 'text-[#73746E] hover:text-[#292B29]')
                   }`}
                 >
                   <span>{grp.group}</span>
                   <ChevronDown
-                    className={`w-3 h-3 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
                       isGroupCollapsed ? '-rotate-90' : 'rotate-0'
                     }`}
                   />
@@ -225,27 +225,27 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       onCloseMobile();
                     }}
                     title={collapsed ? item.label : undefined}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13.5px] transition-all cursor-pointer ${
                       isActive
                         ? (isDark 
-                            ? 'bg-[#222622] text-[#C9B49B] font-semibold border-l-2 border-[#C9B49B] shadow-xs'
-                            : 'bg-[#F1EAE0] text-[#292B29] font-bold border-l-2 border-[#B99A78] shadow-xs')
+                            ? 'bg-[#222622] text-[#C9B49B] font-semibold border-l-[3px] border-[#C9B49B] shadow-xs'
+                            : 'bg-[#F1EAE0] text-[#292B29] font-[650] border-l-[3px] border-[#B99A78] shadow-xs')
                         : (isDark
                             ? 'text-[#C5BFB5] hover:text-[#F5F2EB] hover:bg-[#1E221E]'
-                            : 'text-[#565851] hover:text-[#262724] hover:bg-[#F8F8F6]')
+                            : 'text-[#30312E] hover:text-[#292B29] hover:bg-[#F8F8F6]')
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${
                         isActive 
                           ? (isDark ? 'text-[#C9B49B]' : 'text-[#997653]') 
-                          : (isDark ? 'text-[#8E8A82]' : 'text-[#777970]')
+                          : (isDark ? 'text-[#8E8A82]' : 'text-[#666A62]')
                       }`} />
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
 
                     {!collapsed && item.badge !== undefined && (
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono-metrics border ${
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-mono-metrics border ${
                         item.id === 'approval_centre' && Number(item.badge) > 0
                           ? (isDark ? 'bg-rose-950/20 text-rose-400 border-rose-500/40 font-bold' : 'bg-[#FCEBE8] text-[#A33327] border-[#FFCDD2] font-bold')
                           : isDark
@@ -264,15 +264,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       </div>
 
       {/* Sidebar Footer with Collapse Toggle */}
-      <div className={`p-3 border-t flex items-center justify-between transition-colors ${
+      <div className={`p-3.5 border-t flex items-center justify-between transition-colors ${
         isDark ? 'border-[#2E332E] bg-[#141614]' : 'border-[#E2E1DC] bg-[#F8F8F6]'
       }`}>
         {!collapsed && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className={`w-2 h-2 rounded-full animate-pulse ${
               isDark ? 'bg-emerald-400' : 'bg-[#2E7D32]'
             }`} />
-            <span className={`text-[11px] font-mono-metrics ${isDark ? 'text-[#8E8A82]' : 'text-[#555750]'}`}>
+            <span className={`text-[12px] font-mono-metrics ${isDark ? 'text-[#8E8A82]' : 'text-[#555750]'}`}>
               37 Views Connected
             </span>
           </div>
@@ -292,10 +292,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar (260px wide, comfortable reading space) */}
       <aside
         className={`hidden lg:block shrink-0 transition-all duration-200 z-20 ${
-          collapsed ? 'w-16' : 'w-64'
+          collapsed ? 'w-16' : 'w-[260px]'
         }`}
       >
         {renderContent()}
@@ -308,7 +308,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
-          <div className="relative w-72 max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+          <div className="relative w-[280px] max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
             {renderContent()}
           </div>
         </div>

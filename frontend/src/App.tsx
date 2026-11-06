@@ -272,15 +272,25 @@ export const App: React.FC = () => {
         />
 
         {/* Dynamic Main Workspace Content */}
-        <main className={`flex-1 overflow-y-auto custom-scrollbar transition-colors ${isDark ? "bg-[#111211]" : "bg-[#F7F7F5]"} ${["products", "brand_profile", "audiences", "features", "sources", "marketing_objectives", "competitors"].includes(activeTab) ? "p-0" : "p-4 sm:p-6 lg:p-8 space-y-6"}`}>
+        <main className={`flex-1 overflow-y-auto custom-scrollbar transition-colors ${isDark ? "bg-[#111211]" : "bg-[#F7F7F5]"} ${["products", "brand_profile", "audiences", "features", "sources", "marketing_objectives", "competitors"].includes(activeTab) ? "p-0" : "p-4 sm:p-5 lg:p-6 space-y-6"}`}>
           {/* Status Alert if Backend is in Demo/Disconnected State */}
           {connectionError && (
-            <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-center justify-between text-xs text-amber-200">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className={`p-4 rounded-xl border flex items-center justify-between text-[13.5px] font-medium transition-colors ${
+              isDark 
+                ? 'bg-amber-950/40 border-amber-600/50 text-amber-200' 
+                : 'bg-[#FFF4D6] border-[#E6C878] text-[#654B16]'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className={`w-5 h-5 shrink-0 ${isDark ? 'text-amber-400' : 'text-[#946B18]'}`} />
                 <span>Operating in Autonomous Client-Side Edge Mode ({connectionError})</span>
               </div>
-              <button onClick={() => setConnectionError(null)} className="text-amber-400 hover:text-white">
+              <button 
+                onClick={() => setConnectionError(null)} 
+                className={`p-1 rounded-md transition-colors ${
+                  isDark ? 'text-amber-300 hover:text-white' : 'text-[#654B16] hover:bg-[#E6C878]/30'
+                }`}
+                aria-label="Dismiss banner"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>

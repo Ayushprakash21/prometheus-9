@@ -818,10 +818,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
               <span className={`text-xs ${themeClasses.textMuted}`}>•</span>
               <span className={`text-xs ${themeClasses.textMuted}`}>Single Source of Truth</span>
             </div>
-            <h1 className={`text-2xl font-bold tracking-tight mt-1 ${themeClasses.textPrimary}`}>
+            <h1 className={`text-[28px] font-[650] tracking-tight mt-1 ${themeClasses.textPrimary}`}>
               Business & Product Registry
             </h1>
-            <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+            <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
               Manage your product portfolio, brand profiles, audience personas, and deterministic ground-truth capabilities.
             </p>
           </div>
@@ -829,7 +829,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAddProductModal(true)}
-              className={`px-4 py-2 rounded-lg text-xs flex items-center gap-2 cursor-pointer shadow-sm ${themeClasses.primaryBtn}`}
+              className={`px-4 py-2 rounded-lg text-[13.5px] font-semibold flex items-center gap-2 cursor-pointer shadow-xs ${themeClasses.primaryBtn}`}
             >
               <Plus className="w-4 h-4" />
               <span>Add Product</span>
@@ -852,7 +852,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-2 cursor-pointer border transition-all whitespace-nowrap ${
+                className={`px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2 cursor-pointer border transition-all whitespace-nowrap ${
                   isActive ? themeClasses.pillActive : themeClasses.pillInactive
                 }`}
               >
@@ -1249,17 +1249,17 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
             <div className={`p-6 rounded-xl border space-y-6 ${themeClasses.cardBg}`}>
               <div className="flex items-center justify-between border-b pb-4 border-inherit">
                 <div>
-                  <h2 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                  <h2 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                     Brand Identity & Voice Architecture
                   </h2>
-                  <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                  <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                     Configure the deterministic voice profile, creative tone, and compliance constraints for {selectedProduct.name}.
                   </p>
                 </div>
                 <button
                   type="submit"
                   disabled={isSavingProfile}
-                  className={`px-4 py-2 rounded-lg text-xs flex items-center gap-2 cursor-pointer shadow-sm ${themeClasses.primaryBtn}`}
+                  className={`px-4 py-2 rounded-lg text-[13.5px] font-semibold flex items-center gap-2 cursor-pointer shadow-xs ${themeClasses.primaryBtn}`}
                 >
                   <Save className="w-4 h-4" />
                   <span>{isSavingProfile ? 'Saving...' : 'Save Brand Profile'}</span>
@@ -1620,10 +1620,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h2 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Target Audience Personas
                 </h2>
-                <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                   Buyer personas, psychological pain points, and channel preferences for {selectedProduct.name}.
                 </p>
               </div>
@@ -1766,10 +1766,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h2 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Deterministic Capabilities & Ground Truth Claims
                 </h2>
-                <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                   Proven product capabilities with supporting evidence. Agents use these to generate factual marketing copy without hallucination.
                 </p>
               </div>
@@ -1889,10 +1889,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h2 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Sources of Truth & Knowledge Grounding
                 </h2>
-                <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                   Authoritative documentation, whitepapers, specs, and URLs from which agents extract ground truth for {selectedProduct.name}.
                 </p>
               </div>
@@ -1999,10 +1999,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           }`}>
             <div className="flex items-center justify-between border-b pb-3 border-inherit">
               <div>
-                <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Register New Product or Service
                 </h3>
-                <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                   Establish a ground-truth registry entry for autonomous marketing.
                 </p>
               </div>
@@ -2309,10 +2309,10 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
           }`}>
             <div className="flex items-center justify-between border-b pb-3 border-inherit">
               <div>
-                <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Edit Product: {productToEdit.name}
                 </h3>
-                <p className={`text-xs mt-0.5 ${themeClasses.textSecondary}`}>
+                <p className={`text-[13.5px] mt-1 ${themeClasses.textSecondary}`}>
                   Update product portfolio attributes, positioning, and market focus.
                 </p>
               </div>
@@ -2506,7 +2506,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
                 <ShieldAlert className="w-6 h-6" />
               </div>
               <div>
-                <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+                <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                   Archive Product
                 </h3>
                 <span className="text-xs text-rose-500">Irreversible Action Warning</span>
@@ -2547,7 +2547,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
             isDark ? 'bg-[#161816] border-[#2E332E]' : 'bg-[#FFFFFF] border-[#E3E3DE]'
           }`}>
             <div className="flex items-center justify-between border-b pb-3 border-inherit">
-              <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+              <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                 {editingFeature ? `Edit Capability: ${editingFeature.name}` : 'Register New Verified Capability'}
               </h3>
               <button onClick={() => setShowFeatureModal(false)} className={themeClasses.textMuted}>
@@ -2683,7 +2683,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
             isDark ? 'bg-[#161816] border-[#2E332E]' : 'bg-[#FFFFFF] border-[#E3E3DE]'
           }`}>
             <div className="flex items-center justify-between border-b pb-3 border-inherit">
-              <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+              <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                 {editingAudience ? `Edit Persona: ${editingAudience.name}` : 'Create Audience Persona'}
               </h3>
               <button onClick={() => setShowAudienceModal(false)} className={themeClasses.textMuted}>
@@ -2817,7 +2817,7 @@ export const ProductManagementView: React.FC<ProductManagementViewProps> = ({
             isDark ? 'bg-[#161816] border-[#2E332E]' : 'bg-[#FFFFFF] border-[#E3E3DE]'
           }`}>
             <div className="flex items-center justify-between border-b pb-3 border-inherit">
-              <h3 className={`text-base font-bold ${themeClasses.textPrimary}`}>
+              <h3 className={`text-[18px] font-[600] ${themeClasses.textPrimary}`}>
                 {editingSource ? `Edit Source: ${editingSource.title}` : 'Register Knowledge Source'}
               </h3>
               <button onClick={() => setShowSourceModal(false)} className={themeClasses.textMuted}>
