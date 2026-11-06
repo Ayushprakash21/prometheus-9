@@ -9,7 +9,9 @@ import {
   Sparkles,
   Compass,
   Sun,
-  Moon
+  Moon,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 import { Product, SystemHealth } from '../types';
 import { PrometheusLogo } from './PrometheusLogo';
@@ -26,6 +28,9 @@ interface AppHeaderProps {
   onTogglePause: () => void;
   mobileMenuOpen: boolean;
   onToggleMobileMenu: () => void;
+  currentUser?: any;
+  onLogout?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -39,6 +44,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onTogglePause,
   mobileMenuOpen,
   onToggleMobileMenu,
+  currentUser,
+  onLogout,
+  onOpenChangePassword,
 }) => {
   const { theme, toggleTheme, isDark } = useTheme();
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
@@ -278,7 +286,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <div className="relative" ref={userDropdownRef}>
           <button
             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-            className={`flex items-center gap-2 p-1.5 rounded-lg border transition-colors ${
+            className={`flex items-center gap-2 p-1.5 rounded-lg border transition-colors cursor-pointer ${
               isDark 
                 ? 'bg-[#121312] border-[#2E332E] hover:border-[#C9B49B]' 
                 : 'bg-[#F8F8F6] border-[#E2E1DC] hover:border-[#B99A78]'
@@ -287,31 +295,58 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-bold ${
               isDark ? 'bg-[#2E332E] text-[#C9B49B]' : 'bg-[#292B29] text-[#FFFFFF]'
             }`}>
-              AP
+              {currentUser?.full_name ? currentUser.full_name.substring(0, 2).toUpperCase() : 'AP'}
             </div>
             <ChevronDown className="w-3.5 h-3.5 opacity-60 hidden sm:block" />
           </button>
 
           {userDropdownOpen && (
-            <div className={`absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-xl py-1.5 z-50 ${
+            <div className={`absolute right-0 top-full mt-2 w-60 rounded-xl border shadow-xl py-1.5 z-50 ${
               isDark ? 'bg-[#161816] border-[#2E332E]' : 'bg-[#FFFFFF] border-[#E2E1DC]'
             }`}>
               <div className={`px-3.5 py-2.5 border-b ${isDark ? 'border-[#2E332E]' : 'border-[#E2E1DC]'}`}>
-                <div className="text-[13px] font-semibold text-[#292B29] dark:text-[#F5F2EB]">Ayush Prakash</div>
-                <div className={`text-[11px] font-mono-metrics mt-0.5 ${isDark ? 'text-[#8E8A82]' : 'text-[#70726B]'}`}>
-                  Owner (Primary Org)
+                <div className="text-[13px] font-semibold text-[#292B29] dark:text-[#F5F2EB] truncate">
+                  {currentUser?.full_name || 'Ayush Administrator'}
+                </div>
+                <div className={`text-[11px] font-mono-metrics mt-0.5 truncate ${isDark ? 'text-[#8E8A82]' : 'text-[#70726B]'}`}>
+                  {currentUser?.email || 'ayush@admin'} &bull; OWNER
                 </div>
               </div>
               <div className="py-1 text-[13px]">
-                <div className={`px-3.5 py-2 cursor-pointer ${isDark ? 'hover:bg-[#1E221E]' : 'hover:bg-[#F1F1EE]'}`}>
-                  Account Settings
+                {onOpenChangePassword && (
+                  <button
+                    onClick={() => {
+                      setUserDropdownOpen(false);
+                      onOpenChangePassword();
+                    }}
+                    className={`w-full text-left px-3.5 py-2 flex items-center gap-2 cursor-pointer transition-colors ${
+                      isDark ? 'hover:bg-[#1E221E] text-[#C5BFB5]' : 'hover:bg-[#F1F1EE] text-[#555750]'
+                    }`}
+                  >
+                    <KeyRound className="w-4 h-4 text-[#A16C50]" />
+                    <span>Change Password</span>
+                  </button>
+                )}
+                <div className={`px-3.5 py-2 cursor-pointer transition-colors ${isDark ? 'hover:bg-[#1E221E] text-[#C5BFB5]' : 'hover:bg-[#F1F1EE] text-[#555750]'}`}>
+                  Account & Organization Settings
                 </div>
-                <div className={`px-3.5 py-2 cursor-pointer ${isDark ? 'hover:bg-[#1E221E]' : 'hover:bg-[#F1F1EE]'}`}>
-                  Team Members
+                <div className={`px-3.5 py-2 cursor-pointer transition-colors ${isDark ? 'hover:bg-[#1E221E] text-[#C5BFB5]' : 'hover:bg-[#F1F1EE] text-[#555750]'}`}>
+                  API Keys & Model Vault
                 </div>
-                <div className={`px-3.5 py-2 cursor-pointer ${isDark ? 'hover:bg-[#1E221E]' : 'hover:bg-[#F1F1EE]'}`}>
-                  API & Token Vault
-                </div>
+                {onLogout && (
+                  <div className={`border-t mt-1 pt-1 ${isDark ? 'border-[#2E332E]' : 'border-[#E2E1DC]'}`}>
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full text-left px-3.5 py-2 flex items-center gap-2 text-rose-500 hover:bg-rose-500/10 cursor-pointer font-medium transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

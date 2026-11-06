@@ -55,7 +55,9 @@ import { PerformanceAnalyticsView } from "./components/PerformanceAnalyticsView"
 import { WorkspaceView } from "./components/WorkspaceView";
 import { ActivityCentreView } from "./components/ActivityCentreView";
 
-import { AlertCircle, X, Sparkles } from "lucide-react";
+import { AlertCircle, X, Sparkles, KeyRound } from "lucide-react";
+import { FlowSignIn } from "./components/FlowSignIn";
+import { getAuthToken, setAuthToken, clearAuthToken, fetchCurrentUser, logoutUser } from "./services/api";
 import { useTheme } from "./context/ThemeContext";
 
 export const App: React.FC = () => {
@@ -81,6 +83,22 @@ export const App: React.FC = () => {
   const [publications, setPublications] = useState<PublicationRecord[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [isPaused, setIsPaused] = useState<boolean>(false);
+
+  // Authentication & Session State
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!getAuthToken());
+  const [isLoginRoute, setIsLoginRoute] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.location.pathname === "/login" || !getAuthToken();
+    }
+    return false;
+  });
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
+  const [modalOldPassword, setModalOldPassword] = useState("");
+  const [modalNewPassword, setModalNewPassword] = useState("");
+  const [modalConfirmPassword, setModalConfirmPassword] = useState("");
+  const [modalPasswordError, setModalPasswordError] = useState<string | null>(null);
+  const [modalPasswordSubmitting, setModalPasswordSubmitting] = useState(false);
 
   // Status & Telemetry
   const [loading, setLoading] = useState<boolean>(true);
@@ -170,8 +188,108 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    loadInitialData();
+    const init = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setIsLoginRoute(true);
+        setLoading(false);
+        return;
+      }
+      try {
+        const user = await fetchCurrentUser();
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        if (typeof window !== "undefined" && window.location.pathname === "/login") {
+          window.history.pushState({}, "", "/");
+          setIsLoginRoute(false);
+        }
+        await loadInitialData();
+      } catch (err: any) {
+        if (err?.message === "AUTHENTICATION_REQUIRED") {
+          clearAuthToken();
+          setIsAuthenticated(false);
+          setIsLoginRoute(true);
+        } else {
+          await loadInitialData();
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
+
+  const handleLoginSuccess = async (token: string, user: any) => {
+    setAuthToken(token);
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsLoginRoute(false);
+    if (typeof window !== "undefined" && window.location.pathname === "/login") {
+      window.history.pushState({}, "", "/");
+    }
+    await loadInitialData();
+  };
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setIsLoginRoute(true);
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/login");
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (modalPasswordSubmitting) return;
+    setModalPasswordError(null);
+
+    if (modalNewPassword.length < 6) {
+      setModalPasswordError("New password must be at least 6 characters.");
+      return;
+    }
+    if (modalNewPassword !== modalConfirmPassword) {
+      setModalPasswordError("Passwords do not match.");
+      return;
+    }
+    if (modalNewPassword === modalOldPassword) {
+      setModalPasswordError("New password must be different from current password.");
+      return;
+    }
+
+    setModalPasswordSubmitting(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch("/api/v1/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          old_password: modalOldPassword,
+          new_password: modalNewPassword
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to update password.");
+      }
+      if (data.access_token) {
+        setAuthToken(data.access_token);
+      }
+      setShowChangePasswordModal(false);
+      setModalOldPassword("");
+      setModalNewPassword("");
+      setModalConfirmPassword("");
+    } catch (err: any) {
+      setModalPasswordError(err.message || "Failed to update password.");
+    } finally {
+      setModalPasswordSubmitting(false);
+    }
+  };
 
   const handleSelectProduct = async (product: Product) => {
     setSelectedProduct(product);
@@ -238,6 +356,11 @@ export const App: React.FC = () => {
     }
   };
 
+  // If on login route or unauthenticated, display FlowSignIn experience
+  if (isLoginRoute || !isAuthenticated) {
+    return <FlowSignIn onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-[#B99A78]/30 ${isDark ? "bg-[#111211] text-[#F5F2EB]" : "bg-[#F7F7F5] text-[#262724]"}`}>
 
@@ -253,6 +376,9 @@ export const App: React.FC = () => {
         onTogglePause={handleTogglePause}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenChangePassword={() => setShowChangePasswordModal(true)}
       />
 
       {/* Main Container */}
@@ -439,6 +565,110 @@ export const App: React.FC = () => {
         onClose={() => setShowOnboardingWizard(false)}
         onComplete={handleCompleteOnboarding}
       />
+
+      {/* Authenticated User Change Password Modal */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className={`w-full max-w-md rounded-2xl border p-7 shadow-2xl relative ${
+            isDark ? "bg-[#181A18] border-[#2E332E] text-[#EEE8DE]" : "bg-[#FFFFFF] border-[#E2E1DC] text-[#202221]"
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#A16C50]/20 text-[#A16C50]">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold font-editorial">Change Password</h2>
+                  <p className={`text-[12px] ${isDark ? "text-[#8E8A82]" : "text-[#686B67]"}`}>
+                    Update your account credentials
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowChangePasswordModal(false)}
+                className={`p-1 rounded-lg cursor-pointer ${isDark ? "hover:bg-[#202221]" : "hover:bg-[#F3F2EE]"}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {modalPasswordError && (
+              <div className="mb-4 p-3 rounded-lg border text-[12px] bg-rose-500/10 border-rose-500/30 text-rose-500">
+                {modalPasswordError}
+              </div>
+            )}
+
+            <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono-metrics uppercase tracking-wider mb-1 font-semibold">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={modalOldPassword}
+                  onChange={(e) => setModalOldPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                  className={`w-full h-11 px-3.5 rounded-xl border text-[13.5px] outline-none ${
+                    isDark ? "bg-[#121312] border-[#2E332E]" : "bg-[#F8F8F6] border-[#E2E1DC]"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono-metrics uppercase tracking-wider mb-1 font-semibold">
+                  New Password (min 6 characters)
+                </label>
+                <input
+                  type="password"
+                  value={modalNewPassword}
+                  onChange={(e) => setModalNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                  className={`w-full h-11 px-3.5 rounded-xl border text-[13.5px] outline-none ${
+                    isDark ? "bg-[#121312] border-[#2E332E]" : "bg-[#F8F8F6] border-[#E2E1DC]"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono-metrics uppercase tracking-wider mb-1 font-semibold">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={modalConfirmPassword}
+                  onChange={(e) => setModalConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  required
+                  className={`w-full h-11 px-3.5 rounded-xl border text-[13.5px] outline-none ${
+                    isDark ? "bg-[#121312] border-[#2E332E]" : "bg-[#F8F8F6] border-[#E2E1DC]"
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(false)}
+                  className={`px-4 py-2 rounded-lg text-[13px] border cursor-pointer ${
+                    isDark ? "border-[#2E332E] hover:bg-[#202221]" : "border-[#E2E1DC] hover:bg-[#F3F2EE]"
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalPasswordSubmitting}
+                  className="px-5 py-2 rounded-lg text-[13px] font-semibold bg-[#202221] text-white cursor-pointer"
+                >
+                  {modalPasswordSubmitting ? "Updating..." : "Update Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* GLOBAL MODAL: ADD PRODUCT */}
       {showGlobalAddProduct && (

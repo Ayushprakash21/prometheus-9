@@ -66,3 +66,54 @@ async def test_auth_login_failure_cases(client: AsyncClient):
         "password": "Password123!"
     })
     assert non_existent_res.status_code == 401
+
+@pytest.mark.asyncio
+async def test_initial_admin_bootstrap_and_forced_password_change(client: AsyncClient):
+    import sqlite3
+    from app.config import settings
+    try:
+        # 1. Login with seeded initial development credentials
+        login_res = await client.post("/api/v1/auth/login", json={
+            "email": "ayush@admin",
+            "password": "admin"
+        })
+        assert login_res.status_code == 200
+        login_data = login_res.json()
+        assert login_data["must_change_password"] is True
+        token = login_data["access_token"]
+        
+        # 2. Change password
+        headers = {"Authorization": f"Bearer {token}"}
+        change_res = await client.post("/api/v1/auth/change-password", headers=headers, json={
+            "old_password": "admin",
+            "new_password": "AyushVerifiedPass2026!#"
+        })
+        assert change_res.status_code == 200
+        change_data = change_res.json()
+        assert change_data["must_change_password"] is False
+        new_token = change_data["access_token"]
+
+        # 3. Old initial password must now be rejected
+        old_login_res = await client.post("/api/v1/auth/login", json={
+            "email": "ayush@admin",
+            "password": "admin"
+        })
+        assert old_login_res.status_code == 401
+
+        # 4. New password must authenticate successfully
+        new_login_res = await client.post("/api/v1/auth/login", json={
+            "email": "ayush@admin",
+            "password": "AyushVerifiedPass2026!#"
+        })
+        assert new_login_res.status_code == 200
+        assert new_login_res.json()["must_change_password"] is False
+
+        # 5. Test logout
+        logout_res = await client.post("/api/v1/auth/logout", headers={"Authorization": f"Bearer {new_token}"})
+        assert logout_res.status_code == 200
+    finally:
+        # 6. Always reset back to admin with must_change_password=True for consistent dev environment
+        con = sqlite3.connect(str(settings.SQLITE_DB_PATH))
+        con.execute("UPDATE users SET hashed_password = ?, must_change_password = 1 WHERE email = 'ayush@admin'", (hash_password("admin"),))
+        con.commit()
+        con.close()

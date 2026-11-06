@@ -52,6 +52,30 @@ async def seed_initial_data(session: AsyncSession):
         session.add(membership)
         logger.info("Seeded founder administrator account.")
 
+    # 2b. Initial Development Administrator Account (ayush@admin / admin with forced password change)
+    INITIAL_ADMIN_EMAIL = "ayush@admin"
+    admin_res = await session.execute(select(User).where(User.email == INITIAL_ADMIN_EMAIL))
+    admin_user = admin_res.scalar_one_or_none()
+    if not admin_user:
+        admin_user = User(
+            email=INITIAL_ADMIN_EMAIL,
+            hashed_password=hash_password("admin"),
+            full_name="Ayush Administrator",
+            is_active=True,
+            is_superuser=True,
+            must_change_password=True
+        )
+        session.add(admin_user)
+        await session.flush()
+        
+        admin_membership = OrganizationMembership(
+            organization_id=org.id,
+            user_id=admin_user.id,
+            role="owner"
+        )
+        session.add(admin_membership)
+        logger.info("Seeded initial administrator account (ayush@admin).")
+
     # 3. Product 1: ORION-9 (Enterprise Supply Chain Operating System)
     orion_res = await session.execute(
         select(Product).where(Product.organization_id == org.id, Product.slug == "orion-9")

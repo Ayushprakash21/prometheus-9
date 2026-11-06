@@ -30,6 +30,33 @@ export function clearAuthToken(): void {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export async function fetchCurrentUser(): Promise<any> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+      clearAuthToken();
+      throw new Error("AUTHENTICATION_REQUIRED");
+    }
+    throw new Error(`Failed to fetch user session: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: getHeaders()
+    });
+  } catch {
+    // Ignore network error during logout
+  } finally {
+    clearAuthToken();
+  }
+}
+
 function getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...customHeaders };
   const token = getAuthToken();

@@ -5,8 +5,8 @@ from sqlalchemy import select
 from app.models.system import User, Organization, OrganizationMembership
 from app.schemas.auth import UserRegister, UserLogin, TokenResponse, UserOut
 from app.security.passwords import hash_password, verify_password
-from app.security.tokens import create_access_token
-from app.core.exceptions import ConflictException, UnauthorizedException
+from app.security.tokens import create_access_token, decode_access_token
+from app.core.exceptions import ConflictException, UnauthorizedException, BadRequestException
 from app.services.audit import record_audit_event
 from app.config import settings
 
@@ -34,7 +34,8 @@ class AuthService:
             hashed_password=hashed_pwd,
             full_name=payload.full_name,
             is_active=True,
-            is_superuser=False
+            is_superuser=False,
+            must_change_password=False
         )
         self.db.add(user)
         await self.db.flush()
@@ -135,5 +136,96 @@ class AuthService:
             token_type="bearer",
             expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
             user_id=user.id,
-            active_organization_id=org_id
+            active_organization_id=org_id,
+            must_change_password=getattr(user, "must_change_password", False)
         )
+
+    async def change_password(self, user_id: str, old_password: str, new_password: str, ip_address: Optional[str] = None) -> TokenResponse:
+        user = (await self.db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if not user:
+            raise UnauthorizedException("User not found.")
+        if not verify_password(old_password, user.hashed_password):
+            raise UnauthorizedException("Current password is incorrect.")
+        if old_password == new_password:
+            raise BadRequestException("New password must be different from your current password.")
+
+        user.hashed_password = hash_password(new_password)
+        user.must_change_password = False
+        await self.db.commit()
+        await self.db.refresh(user)
+
+        # Find primary organization
+        mem_res = await self.db.execute(
+            select(OrganizationMembership)
+            .where(OrganizationMembership.user_id == user.id)
+            .order_by(OrganizationMembership.created_at.asc())
+        )
+        primary_mem = mem_res.scalar_one_or_none()
+        org_id = primary_mem.organization_id if primary_mem else ""
+
+        await record_audit_event(
+            db=self.db,
+            actor_id=user.id,
+            actor_type="user",
+            action="PASSWORD_CHANGED",
+            resource_type="auth",
+            organization_id=org_id,
+            ip_address=ip_address
+        )
+
+        token = create_access_token(
+            subject=user.id,
+            extra_claims={"org_id": org_id, "email": user.email}
+        )
+
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            user_id=user.id,
+            active_organization_id=org_id,
+            must_change_password=False
+        )
+
+    async def request_password_reset(self, email: str, ip_address: Optional[str] = None) -> dict:
+        user = (await self.db.execute(select(User).where(User.email == email.lower()))).scalar_one_or_none()
+        if user:
+            # Generate a secure short-lived reset token (valid 15 mins)
+            reset_token = create_access_token(
+                subject=user.id,
+                extra_claims={"type": "password_reset", "email": user.email}
+            )
+            await record_audit_event(
+                db=self.db,
+                actor_id=user.id,
+                actor_type="user",
+                action="PASSWORD_RESET_REQUESTED",
+                resource_type="auth",
+                ip_address=ip_address
+            )
+            return {"message": "Password reset instructions generated.", "reset_token": reset_token}
+        return {"message": "If that email exists in our records, password reset instructions have been generated."}
+
+    async def reset_password(self, token: str, new_password: str, ip_address: Optional[str] = None) -> dict:
+        payload = decode_access_token(token)
+        if not payload or payload.get("type") != "password_reset":
+            raise UnauthorizedException("Invalid or expired password reset token.")
+        
+        user_id = payload.get("sub")
+        user = (await self.db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if not user:
+            raise UnauthorizedException("User not found.")
+
+        user.hashed_password = hash_password(new_password)
+        user.must_change_password = False
+        await self.db.commit()
+
+        await record_audit_event(
+            db=self.db,
+            actor_id=user.id,
+            actor_type="user",
+            action="PASSWORD_RESET_COMPLETED",
+            resource_type="auth",
+            ip_address=ip_address
+        )
+        return {"message": "Password reset successfully. You may now sign in with your new password."}
