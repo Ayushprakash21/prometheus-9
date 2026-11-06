@@ -25,13 +25,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove('light');
       root.setAttribute('data-theme', 'dark');
       document.body.style.backgroundColor = '#111211';
-      document.body.style.color = '#EEE8DE';
+      document.body.style.color = '#F5F2EB';
     } else {
       root.classList.add('light');
       root.classList.remove('dark');
       root.setAttribute('data-theme', 'light');
-      document.body.style.backgroundColor = '#F8F8F6';
-      document.body.style.color = '#292B29';
+      document.body.style.backgroundColor = '#F7F7F5';
+      document.body.style.color = '#262724';
     }
   }, [theme]);
 

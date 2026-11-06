@@ -184,7 +184,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     <div className={`flex flex-col h-full select-none transition-colors border-r ${
       isDark 
         ? 'bg-[#181A18] border-[#2E332E] text-[#F5F2EB]' 
-        : 'bg-[#FFFFFF] border-[#E3E3DE] text-[#292B29]'
+        : 'bg-[#FFFFFF] border-[#E2E1DC] text-[#262724]'
     }`}>
       {/* Scrollable Navigation Sections */}
       <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 custom-scrollbar">
@@ -200,7 +200,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   className={`w-full flex items-center justify-between px-2.5 py-1 text-[10px] font-mono-metrics uppercase tracking-wider transition-colors ${
                     isDark
                       ? (hasActiveChild ? 'text-[#C9B49B] font-semibold' : 'text-[#8E8A82] hover:text-[#C5BFB5]')
-                      : (hasActiveChild ? 'text-[#8E7656] font-semibold' : 'text-[#898B85] hover:text-[#292B29]')
+                      : (hasActiveChild ? 'text-[#292B29] font-bold' : 'text-[#898980] hover:text-[#262724]')
                   }`}
                 >
                   <span>{grp.group}</span>
@@ -211,7 +211,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   />
                 </button>
               ) : (
-                <div className={`h-2 border-b mb-1 ${isDark ? 'border-[#2E332E]' : 'border-[#E3E3DE]'}`} />
+                <div className={`h-2 border-b mb-1 ${isDark ? 'border-[#2E332E]' : 'border-[#E2E1DC]'}`} />
               )}
 
               {(!isGroupCollapsed || collapsed) && grp.items.map((item) => {
@@ -228,18 +228,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                       isActive
                         ? (isDark 
-                            ? 'bg-[#222622] text-[#C9B49B] font-semibold border-l-2 border-[#C9B49B] shadow-sm'
-                            : 'bg-[#F5F0E9] text-[#292B29] font-bold border-l-2 border-[#8E7656] shadow-sm')
+                            ? 'bg-[#222622] text-[#C9B49B] font-semibold border-l-2 border-[#C9B49B] shadow-xs'
+                            : 'bg-[#F1EAE0] text-[#292B29] font-bold border-l-2 border-[#B99A78] shadow-xs')
                         : (isDark
                             ? 'text-[#C5BFB5] hover:text-[#F5F2EB] hover:bg-[#1E221E]'
-                            : 'text-[#686B67] hover:text-[#292B29] hover:bg-[#F1F1EE]')
+                            : 'text-[#565851] hover:text-[#262724] hover:bg-[#F8F8F6]')
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon className={`w-3.5 h-3.5 shrink-0 ${
                         isActive 
-                          ? (isDark ? 'text-[#C9B49B]' : 'text-[#8E7656]') 
-                          : (isDark ? 'text-[#8E8A82]' : 'text-[#898B85]')
+                          ? (isDark ? 'text-[#C9B49B]' : 'text-[#997653]') 
+                          : (isDark ? 'text-[#8E8A82]' : 'text-[#777970]')
                       }`} />
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
@@ -247,10 +247,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     {!collapsed && item.badge !== undefined && (
                       <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono-metrics border ${
                         item.id === 'approval_centre' && Number(item.badge) > 0
-                          ? 'bg-rose-950/20 text-rose-400 border-rose-500/40 font-bold'
+                          ? (isDark ? 'bg-rose-950/20 text-rose-400 border-rose-500/40 font-bold' : 'bg-[#FCEBE8] text-[#A33327] border-[#FFCDD2] font-bold')
                           : isDark
                           ? 'bg-[#121312] text-[#C9B49B] border-[#2E332E]'
-                          : 'bg-[#F1F1EE] text-[#686B67] border-[#E3E3DE]'
+                          : 'bg-[#F1F1EE] text-[#555750] border-[#E2E1DC]'
                       }`}>
                         {item.badge}
                       </span>
@@ -265,12 +265,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
       {/* Sidebar Footer with Collapse Toggle */}
       <div className={`p-3 border-t flex items-center justify-between transition-colors ${
-        isDark ? 'border-[#2E332E] bg-[#141614]' : 'border-[#E3E3DE] bg-[#F8F8F6]'
+        isDark ? 'border-[#2E332E] bg-[#141614]' : 'border-[#E2E1DC] bg-[#F8F8F6]'
       }`}>
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className={`text-[11px] font-mono-metrics ${isDark ? 'text-[#8E8A82]' : 'text-[#686B67]'}`}>
+            <span className={`w-2 h-2 rounded-full animate-pulse ${
+              isDark ? 'bg-emerald-400' : 'bg-[#2E7D32]'
+            }`} />
+            <span className={`text-[11px] font-mono-metrics ${isDark ? 'text-[#8E8A82]' : 'text-[#555750]'}`}>
               37 Views Connected
             </span>
           </div>
@@ -278,7 +280,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         <button
           onClick={onToggleCollapsed}
           className={`p-1.5 rounded-lg transition-colors ml-auto ${
-            isDark ? 'text-[#8E8A82] hover:text-[#F5F2EB] hover:bg-[#2E332E]' : 'text-[#686B67] hover:text-[#292B29] hover:bg-[#F1F1EE]'
+            isDark ? 'text-[#8E8A82] hover:text-[#F5F2EB] hover:bg-[#2E332E]' : 'text-[#555750] hover:text-[#262724] hover:bg-[#F1F1EE]'
           }`}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -303,7 +305,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
           <div className="relative w-72 max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">

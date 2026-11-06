@@ -239,7 +239,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-[#C9B49B]/30 ${isDark ? "bg-[#111211] text-[#F5F2EB]" : "bg-[#F8F8F6] text-[#292B29]"}`}>
+    <div className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-[#B99A78]/30 ${isDark ? "bg-[#111211] text-[#F5F2EB]" : "bg-[#F7F7F5] text-[#262724]"}`}>
 
       {/* Top Header */}
       <AppHeader
@@ -272,7 +272,7 @@ export const App: React.FC = () => {
         />
 
         {/* Dynamic Main Workspace Content */}
-        <main className={`flex-1 overflow-y-auto custom-scrollbar transition-colors ${isDark ? "bg-[#111211]" : "bg-[#F8F8F6]"} ${["products", "brand_profile", "audiences", "features", "sources", "marketing_objectives", "competitors"].includes(activeTab) ? "p-0" : "p-4 sm:p-6 lg:p-8 space-y-6"}`}>
+        <main className={`flex-1 overflow-y-auto custom-scrollbar transition-colors ${isDark ? "bg-[#111211]" : "bg-[#F7F7F5]"} ${["products", "brand_profile", "audiences", "features", "sources", "marketing_objectives", "competitors"].includes(activeTab) ? "p-0" : "p-4 sm:p-6 lg:p-8 space-y-6"}`}>
           {/* Status Alert if Backend is in Demo/Disconnected State */}
           {connectionError && (
             <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-center justify-between text-xs text-amber-200">
@@ -505,14 +505,14 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowGlobalAddProduct(false)}
-                  className="px-4 py-2 rounded-lg border border-[#414542] text-xs text-[#B8B0A5]"
+                  className="px-4 py-2 rounded-lg border border-[#E2D5C5] text-xs text-[#514334] bg-[#F1EAE0] hover:bg-[#E9DFD2]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingQuick}
-                  className="px-5 py-2 rounded-lg bg-[#A16C50] hover:bg-[#B87C5E] text-xs font-semibold text-[#EEE8DE] disabled:opacity-50"
+                  className="px-5 py-2 rounded-lg bg-[#292B29] hover:bg-[#414542] text-xs font-semibold text-[#FFFFFF] disabled:opacity-50"
                 >
                   {isCreatingQuick ? 'Registering...' : 'Register Product'}
                 </button>
